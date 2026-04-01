@@ -575,7 +575,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                                   >
                                     <option value="">Select...</option>
-                                    {(field.options || '').split(',').map((opt: string, i: number) => (
+                                    {(Array.isArray(field.options) ? field.options : (field.options || '').split(',')).map((opt: string, i: number) => (
                                       <option key={i} value={opt.trim()}>{opt.trim()}</option>
                                     ))}
                                   </select>
