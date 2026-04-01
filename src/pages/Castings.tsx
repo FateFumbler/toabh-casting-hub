@@ -31,6 +31,9 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import CircularProgress from '@mui/material/CircularProgress'
 
+// Statuses hidden from Grid/List views but still shown in Kanban
+const HIDDEN_STATUSES = ['WON', 'LOST'] as const
+
 export function Castings() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -169,7 +172,7 @@ export function Castings() {
       // Team member filter
       if (activeFilters.team_member?.length) {
         const castingIds = (c.assigned_ids || '').toString().split(',').map(s => s.trim())
-        const hasMatchingMember = activeFilters.team_member.some(memberId => 
+        const hasMatchingMember = activeFilters.team_member.some(memberId =>
           castingIds.includes(memberId)
         )
         if (!hasMatchingMember) return false
@@ -182,6 +185,11 @@ export function Castings() {
       const cmp = String(aVal).localeCompare(String(bVal))
       return sortConfig.direction === 'asc' ? cmp : -cmp
     })
+
+  // Grid/List: exclude WON/LOST (still kept in global state for Kanban)
+  const gridListCastings = filteredCastings.filter(
+    (c) => !HIDDEN_STATUSES.includes(c.status as typeof HIDDEN_STATUSES[number])
+  )
 
   const activeFilterCount = Object.values(activeFilters).flat().length
 
@@ -298,7 +306,7 @@ export function Castings() {
         />
       ) : castingViewMode === 'grid' ? (
         <GridView
-          castings={filteredCastings}
+          castings={gridListCastings}
           setCastings={setCastings}
           pipeline={pipeline}
           onCastingClick={(c) => {
@@ -308,7 +316,7 @@ export function Castings() {
         />
       ) : (
         <ListView
-          castings={filteredCastings}
+          castings={gridListCastings}
           pipeline={pipeline}
           setCastings={setCastings}
           sortConfig={sortConfig}

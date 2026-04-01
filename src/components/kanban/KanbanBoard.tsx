@@ -121,13 +121,40 @@ export function KanbanBoard({
   // Castings with no matching stage go into first column (fallback)
   const fallbackStage = pipeline[0]?.name ?? 'NEW'
 
+  // WON/LOST buckets — virtual columns not in the pipeline
+  const wonCastings: Casting[] = []
+  const lostCastings: Casting[] = []
+
   for (const casting of castings) {
-    const stageName = resolveStage(casting)
-    if (castingsByStage[stageName]) {
-      castingsByStage[stageName].push(casting)
+    const status = casting.status?.toUpperCase()
+    if (status === 'WON') {
+      wonCastings.push(casting)
+    } else if (status === 'LOST') {
+      lostCastings.push(casting)
     } else {
-      castingsByStage[fallbackStage]?.push(casting)
+      const stageName = resolveStage(casting)
+      if (castingsByStage[stageName]) {
+        castingsByStage[stageName].push(casting)
+      } else {
+        castingsByStage[fallbackStage]?.push(casting)
+      }
     }
+  }
+
+  // Virtual WON column
+  const wonColumn = {
+    id: -1,
+    name: 'WON',
+    color: '#22c55e',
+    order: 9999,
+  }
+
+  // Virtual LOST column
+  const lostColumn = {
+    id: -2,
+    name: 'LOST',
+    color: '#ef4444',
+    order: 10000,
   }
 
   return (
@@ -146,6 +173,22 @@ export function KanbanBoard({
             onCastingClick={onCastingClick}
           />
         ))}
+        {/* WON virtual column */}
+        {wonCastings.length > 0 && (
+          <KanbanColumn
+            stage={wonColumn}
+            castings={wonCastings}
+            onCastingClick={onCastingClick}
+          />
+        )}
+        {/* LOST virtual column */}
+        {lostCastings.length > 0 && (
+          <KanbanColumn
+            stage={lostColumn}
+            castings={lostCastings}
+            onCastingClick={onCastingClick}
+          />
+        )}
       </div>
 
       <DragOverlay dropAnimation={null}>
