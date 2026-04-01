@@ -479,56 +479,37 @@ function GridView({
             )}
             onClick={() => onCastingClick(c)}
           >
-            {/* Top bar: status dropdown + action buttons */}
-            <div className="flex items-center gap-2 mb-3">
-              <select
-                value={c.status || ''}
-                onChange={(e) => {
-                  e.stopPropagation()
-                  handlePipelineStageChange(c.id, e.target.value)
-                }}
-                disabled={updatingId === c.id}
-                onClick={(e) => e.stopPropagation()}
-                className="px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer"
-                style={{
-                  backgroundColor: stageColor + '20',
-                  color: stageColor,
-                }}
-              >
-                {pipeline.map((stage) => (
-                  <option key={stage.id} value={stage.name}>
-                    {stage.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex-1" />
-              <div className="flex gap-1 shrink-0">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    window.open('tel:' + (c.client_contact || ''))
-                  }}
-                  className="p-1.5 rounded-full hover:bg-gray-100 text-sm"
-                  title="Call"
-                >
-                  <Phone className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    window.open('https://wa.me/' + (c.client_contact || '').replace(/\D/g, ''))
-                  }}
-                  className="p-1.5 rounded-full hover:bg-gray-100 text-sm"
-                  title="WhatsApp"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                </button>
-              </div>
+            {/* Top bar: action buttons only — compact, top-right */}
+            <div className="flex items-center justify-end gap-1 mb-3">
+              {c.client_contact && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      window.open('tel:' + c.client_contact)
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+                    title="Call"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      window.open('https://wa.me/' + c.client_contact.replace(/\D/g, ''))
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors"
+                    title="WhatsApp"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Content */}
             <div className="flex-1">
-              <h3 className="font-bold text-base text-slate-900 mb-1 line-clamp-2">
+              <h3 className="font-bold text-base text-slate-900 mb-1 line-clamp-2 leading-snug">
                 {c.project_name || 'Untitled'}
               </h3>
               <p className="text-[13px] text-slate-600 truncate">{c.client_name}</p>
@@ -549,13 +530,33 @@ function GridView({
               )}
             </div>
 
-            {/* Footer */}
-            <div className="mt-auto pt-2 flex items-center justify-between text-xs text-slate-400 border-t border-slate-100">
-              <span className="truncate">{c.source || 'Direct'}</span>
+            {/* Footer: status dropdown (compact) + assigned name */}
+            <div className="mt-auto pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
+              {/* Status dropdown — compact, bottom-left */}
+              <select
+                value={c.status || ''}
+                onChange={(e) => {
+                  e.stopPropagation()
+                  handlePipelineStageChange(c.id, e.target.value)
+                }}
+                disabled={updatingId === c.id}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[11px] font-medium border-0 cursor-pointer bg-transparent focus:outline-none transition-all px-0 py-0 rounded-none"
+                style={{ color: stageColor }}
+                title="Change status"
+              >
+                {pipeline.map((stage) => (
+                  <option key={stage.id} value={stage.name}>
+                    {stage.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Assigned name — bottom-right */}
               {c.assigned_names && (
-                <div className="flex items-center gap-1 truncate">
-                  <span className="truncate">{c.assigned_names.split(',')[0]}</span>
-                </div>
+                <span className="text-[11px] text-slate-400 truncate ml-auto">
+                  {c.assigned_names.split(',')[0]}
+                </span>
               )}
             </div>
           </div>
