@@ -14,52 +14,278 @@ interface StageState extends PipelineStage {
   isEditing: boolean
   localName: string
   localColor: string
-  // Pending save flag to prevent rapid double-clicks
-  pending?: boolean
 }
 
-// XSS sanitization helper
 const escapeHtml = (str: string) =>
   str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers: derive sorted list from map
-// ─────────────────────────────────────────────────────────────────────────────
 const toList = (map: Map<number, StageState>): StageState[] =>
   Array.from(map.values()).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Component
+// StageCard — display row: color dot + name + actions in one line
+// ─────────────────────────────────────────────────────────────────────────────
+function StageCard({
+  stage,
+  index,
+  totalCount,
+  onEdit,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  isSaving,
+  feedback,
+}: {
+  stage: StageState
+  index: number
+  totalCount: number
+  onEdit: () => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  isSaving: boolean
+  feedback?: { msg: string; type: 'success' | 'error' }
+}) {
+  return (
+    <div className="flex items-center gap-2 sm:gap-3 bg-white rounded-xl border border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm hover:shadow-md transition-shadow">
+      {/* Reorder — two vertically stacked arrows in one column */}
+      <div className="flex items-center shrink-0">
+        <button
+          onClick={onMoveUp}
+          disabled={index === 0 || isSaving}
+          title="Move up"
+          className="w-10 h-6 flex items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed active:bg-slate-200 transition-all"
+        >
+          <ChevronUp className="w-4 h-4 text-slate-400" />
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={index === totalCount - 1 || isSaving}
+          title="Move down"
+          className="w-10 h-6 flex items-center justify-center rounded-lg hover:bg-slate-100 disabled:opacity-25 disabled:cursor-not-allowed active:bg-slate-200 transition-all"
+        >
+          <ChevronDown className="w-4 h-4 text-slate-400" />
+        </button>
+      </div>
+
+      {/* Color dot */}
+      <div
+        className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full flex-shrink-0"
+        style={{ backgroundColor: stage.color }}
+      />
+
+      {/* Stage name — truncate to prevent overflow */}
+      <span className="flex-1 min-w-0 text-sm sm:text-[15px] font-medium text-slate-800 truncate">
+        {escapeHtml(stage.name)}
+      </span>
+
+      {/* Inline feedback */}
+      <AnimatePresence>
+        {feedback && (
+          <motion.span
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className={`shrink-0 text-[11px] sm:text-xs font-medium hidden sm:block ${
+              feedback.type === 'success' ? 'text-emerald-600' : 'text-red-500'
+            }`}
+          >
+            {feedback.msg}
+          </motion.span>
+        )}
+      </AnimatePresence>
+
+      {/* Edit */}
+      <button
+        onClick={onEdit}
+        disabled={isSaving}
+        title="Edit"
+        className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-amber-50 text-slate-400 hover:text-amber-600 disabled:opacity-40 active:scale-95 transition-all"
+      >
+        <Pencil className="w-4 h-4" />
+      </button>
+
+      {/* Delete */}
+      <button
+        onClick={onDelete}
+        disabled={isSaving}
+        title="Delete"
+        className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 disabled:opacity-40 active:scale-95 transition-all"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StageEditRow — inline edit form: color + name input + save + cancel
+// ─────────────────────────────────────────────────────────────────────────────
+function StageEditRow({
+  stage,
+  onSave,
+  onCancel,
+  onColorChange,
+  onNameChange,
+  isSaving,
+  error,
+}: {
+  stage: StageState
+  onSave: () => void
+  onCancel: () => void
+  onColorChange: (color: string) => void
+  onNameChange: (name: string) => void
+  isSaving: boolean
+  error?: string
+}) {
+  return (
+    <div className="bg-amber-50/60 rounded-xl border-2 border-amber-200 px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Color picker */}
+        <input
+          type="color"
+          value={stage.localColor}
+          onChange={e => onColorChange(e.target.value)}
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl cursor-pointer flex-shrink-0 border border-slate-200 bg-white"
+          title="Pick color"
+        />
+
+        {/* Name input */}
+        <div className="flex-1 min-w-0">
+          <input
+            type="text"
+            value={stage.localName}
+            onChange={e => onNameChange(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && stage.localName.trim()) onSave()
+              if (e.key === 'Escape') onCancel()
+            }}
+            className="w-full px-3 py-2 sm:py-2.5 border border-slate-200 rounded-xl bg-white text-sm sm:text-[15px] focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400"
+            autoFocus
+          />
+          {error && (
+            <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {error}
+            </p>
+          )}
+        </div>
+
+        {/* Save */}
+        <button
+          onClick={onSave}
+          disabled={isSaving || !stage.localName.trim()}
+          title="Save"
+          className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl bg-amber-500 text-white hover:bg-amber-600 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
+        >
+          {isSaving
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <Check className="w-4 h-4" />
+          }
+        </button>
+
+        {/* Cancel */}
+        <button
+          onClick={onCancel}
+          disabled={isSaving}
+          title="Cancel"
+          className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 disabled:opacity-40 transition-all shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AddStageForm — add new stage form
+// ─────────────────────────────────────────────────────────────────────────────
+function AddStageForm({
+  onAdd,
+  onCancel,
+  isSaving,
+  error,
+}: {
+  onAdd: (name: string, color: string) => void
+  onCancel: () => void
+  isSaving: boolean
+  error?: string
+}) {
+  const [name, setName] = useState('')
+  const [color, setColor] = useState('#6366f1')
+
+  const handleSubmit = () => {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    onAdd(trimmed, color)
+  }
+
+  return (
+    <div className="bg-amber-50/60 rounded-xl border-2 border-amber-300 px-3 py-2.5 sm:px-4 sm:py-3">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <input
+          type="color"
+          value={color}
+          onChange={e => setColor(e.target.value)}
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl cursor-pointer flex-shrink-0 border border-slate-200 bg-white"
+          title="Pick color"
+        />
+        <div className="flex-1 min-w-0">
+          <input
+            type="text"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && name.trim()) handleSubmit()
+              if (e.key === 'Escape') onCancel()
+            }}
+            placeholder="New stage name"
+            className="w-full px-3 py-2 sm:py-2.5 border border-slate-200 rounded-xl bg-white text-sm sm:text-[15px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-400"
+            autoFocus
+          />
+          {error && (
+            <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {error}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={handleSubmit}
+          disabled={isSaving || !name.trim()}
+          className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl bg-amber-500 text-white hover:bg-amber-600 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0"
+        >
+          {isSaving
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <Plus className="w-4 h-4" />
+          }
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={isSaving}
+          className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 active:scale-95 disabled:opacity-40 transition-all shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main component
 // ─────────────────────────────────────────────────────────────────────────────
 export function PipelineStages() {
-  // Single source of truth
   const [stagesMap, setStagesMap] = useState<Map<number, StageState>>(new Map())
-
-  // Derived: always computed from stagesMap, never kept as separate state
   const stages = toList(stagesMap)
-
   const [loading, setLoading] = useState(true)
-
-  // Add-new form
   const [isAdding, setIsAdding] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newColor, setNewColor] = useState('#6366f1')
-
-  // Shared add-in-progress guard (uses ref to avoid stale closure in async handlers)
+  const [savingSet, setSavingSet] = useState<Set<number>>(new Set())
+  const [feedback, setFeedback] = useState<Map<number, { msg: string; type: 'success' | 'error' }>>(new Map())
+  const [addError, setAddError] = useState('')
   const addingRef = useRef(false)
 
-  // Per-item saving guard (stage id → true while request is in flight)
-  const [savingSet, setSavingSet] = useState<Set<number>>(new Set())
-
-  // Per-item feedback messages
-  const [feedback, setFeedback] = useState<Map<number, { msg: string; type: 'success' | 'error' }>>(new Map())
-
-  // Global validation error for the add form
-  const [addError, setAddError] = useState('')
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Load
-  // ─────────────────────────────────────────────────────────────────────────
   const fetchStages = useCallback(async () => {
     try {
       const data: PipelineStage[] = await api.get('/settings/pipeline')
@@ -83,9 +309,6 @@ export function PipelineStages() {
 
   useEffect(() => { fetchStages() }, [fetchStages])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Feedback helper (auto-clears after 3s)
-  // ─────────────────────────────────────────────────────────────────────────
   const showFeedback = useCallback((id: number, msg: string, type: 'success' | 'error') => {
     setFeedback(prev => {
       const next = new Map(prev)
@@ -101,212 +324,77 @@ export function PipelineStages() {
     }, 3000)
   }, [])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Optimistic update helper — updates map then calls API
-  // ─────────────────────────────────────────────────────────────────────────
-  const withOptimisticUpdate = useCallback(async <T,>(
-    id: number,
-    optimisticUpdate: (map: Map<number, StageState>) => Map<number, StageState>,
-    apiCall: () => Promise<T>,
-    onSuccess?: (result: T, map: Map<number, StageState>) => void,
-  ) => {
-    // Optimistic
-    setStagesMap(prev => optimisticUpdate(new Map(prev)))
-    setSavingSet(prev => new Set(prev).add(id))
-    try {
-      const result = await apiCall()
-      setStagesMap(prev => {
-        const next = optimisticUpdate(new Map(prev)) // re-apply with confirmed data
-        onSuccess?.(result, next)
-        return next
-      })
-      return { ok: true, result }
-    } catch (err) {
-      // Rollback: re-fetch to get server truth
-      await fetchStages()
-      showFeedback(id, 'Action failed — reverted', 'error')
-      return { ok: false, error: err }
-    } finally {
-      setSavingSet(prev => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
-    }
-  }, [fetchStages, showFeedback])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Reorder: move up
-  // ─────────────────────────────────────────────────────────────────────────
-  const moveUp = async (index: number) => {
-    if (index === 0) return
-    const list = toList(stagesMap)
-    const reordered = [...list]
-    ;[reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]]
-
-    // Persist sort_order values
-    const withOrder = reordered.map((s, i) => ({ ...s, sort_order: i }))
-    const newMap = new Map(withOrder.map(s => [s.id, s]))
-    setStagesMap(newMap)
-
-    try {
-      await api.put('/settings/pipeline/reorder', {
-        stages: withOrder.map(s => ({ id: s.id, name: s.localName, color: s.localColor, sort_order: s.sort_order }))
-      })
-    } catch (err) {
-      console.error('Reorder failed:', err)
-      await fetchStages()
-      showFeedback(-1, 'Reorder failed', 'error')
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Reorder: move down
-  // ─────────────────────────────────────────────────────────────────────────
-  const moveDown = async (index: number) => {
-    const list = toList(stagesMap)
-    if (index >= list.length - 1) return
-    const reordered = [...list]
-    ;[reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]]
-
-    const withOrder = reordered.map((s, i) => ({ ...s, sort_order: i }))
-    const newMap = new Map(withOrder.map(s => [s.id, s]))
-    setStagesMap(newMap)
-
-    try {
-      await api.put('/settings/pipeline/reorder', {
-        stages: withOrder.map(s => ({ id: s.id, name: s.localName, color: s.localColor, sort_order: s.sort_order }))
-      })
-    } catch (err) {
-      console.error('Reorder failed:', err)
-      await fetchStages()
-      showFeedback(-1, 'Reorder failed', 'error')
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Start editing — populates localName/localColor from current values
-  // ─────────────────────────────────────────────────────────────────────────
   const startEdit = useCallback((id: number) => {
     setStagesMap(prev => {
       const next = new Map(prev)
       const item = next.get(id)
       if (item) {
-        next.set(id, {
-          ...item,
-          isEditing: true,
-          localName: item.name,
-          localColor: item.color,
-        })
+        next.set(id, { ...item, isEditing: true, localName: item.name, localColor: item.color })
       }
       return next
     })
   }, [])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Update local field while editing (no API call)
-  // ─────────────────────────────────────────────────────────────────────────
-  const updateLocal = useCallback((id: number, field: 'name' | 'color', value: string) => {
-    setStagesMap(prev => {
-      const next = new Map(prev)
-      const item = next.get(id)
-      if (item) {
-        next.set(id, {
-          ...item,
-          [field === 'name' ? 'localName' : 'localColor']: value,
-        })
-      }
-      return next
-    })
-  }, [])
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Cancel editing — restore original name/color
-  // ─────────────────────────────────────────────────────────────────────────
   const cancelEdit = useCallback((id: number) => {
     setStagesMap(prev => {
       const next = new Map(prev)
       const item = next.get(id)
       if (item) {
-        next.set(id, {
-          ...item,
-          isEditing: false,
-          localName: item.name,   // restore original
-          localColor: item.color, // restore original
-        })
+        next.set(id, { ...item, isEditing: false, localName: item.name, localColor: item.color })
       }
       return next
     })
   }, [])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Save edit
-  // ─────────────────────────────────────────────────────────────────────────
+  const updateLocal = useCallback((id: number, field: 'name' | 'color', value: string) => {
+    setStagesMap(prev => {
+      const next = new Map(prev)
+      const item = next.get(id)
+      if (item) {
+        next.set(id, { ...item, [field === 'name' ? 'localName' : 'localColor']: value })
+      }
+      return next
+    })
+    setFeedback(prev => { const n = new Map(prev); n.delete(id); return n })
+  }, [])
+
   const saveEdit = async (id: number) => {
     const item = stagesMap.get(id)
     if (!item) return
+    const trimmed = item.localName.trim()
+    if (!trimmed) return
 
-    const trimmedName = item.localName.trim()
-    if (!trimmedName) return
-
-    // Duplicate-name guard (across all stages)
     const duplicate = Array.from(stagesMap.values()).find(
-      s => s.id !== id && s.name.trim().toLowerCase() === trimmedName.toLowerCase()
+      s => s.id !== id && s.name.trim().toLowerCase() === trimmed.toLowerCase()
     )
     if (duplicate) {
-      showFeedback(id, `"${trimmedName}" already exists`, 'error')
+      showFeedback(id, 'Name already exists', 'error')
       return
     }
 
-    const { ok } = await withOptimisticUpdate(
-      id,
-      map => {
-        const next = new Map(map)
-        const s = next.get(id)
-        if (s) next.set(id, { ...s, isEditing: false })
-        return next
-      },
-      async () => {
-        const updated: PipelineStage = await api.put(`/settings/pipeline/${id}`, {
-          name: trimmedName,
-          color: item.localColor,
-        })
-        return updated
-      },
-      (_result, nextMap) => {
-        // Apply server-confirmed values to local fields
-        const s = nextMap.get(id)
-        if (s) {
-          setStagesMap(prev => {
-            const next = new Map(prev)
-            next.set(id, { ...s, name: s.localName, color: s.localColor })
-            return next
-          })
-        }
-        showFeedback(id, 'Saved!', 'success')
-      }
-    )
-    if (ok) {
-      // sync local fields with confirmed name/color
+    setSavingSet(prev => new Set(prev).add(id))
+    try {
+      await api.put(`/settings/pipeline/${id}`, { name: trimmed, color: item.localColor })
       setStagesMap(prev => {
         const next = new Map(prev)
         const s = next.get(id)
-        if (s) next.set(id, { ...s, name: s.localName, color: s.localColor })
+        if (s) next.set(id, { ...s, isEditing: false, name: s.localName, color: s.localColor })
         return next
       })
+      showFeedback(id, 'Saved!', 'success')
+    } catch (err) {
+      console.error('Save failed:', err)
+      await fetchStages()
+      showFeedback(id, 'Save failed', 'error')
+    } finally {
+      setSavingSet(prev => { const next = new Set(prev); next.delete(id); return next })
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Delete
-  // ─────────────────────────────────────────────────────────────────────────
   const deleteStage = useCallback(async (id: number) => {
     if (!window.confirm('Delete this stage?')) return
+    const name = stagesMap.get(id)?.name ?? ''
 
-    const item = stagesMap.get(id)
-    const name = item?.name ?? ''
-
-    // Optimistic: remove from map
     setStagesMap(prev => {
       const next = new Map(prev)
       next.delete(id)
@@ -319,33 +407,53 @@ export function PipelineStages() {
       showFeedback(id, `"${name}" deleted`, 'success')
     } catch (err) {
       console.error('Delete failed:', err)
-      await fetchStages() // rollback
-      showFeedback(id, 'Delete failed — reverted', 'error')
+      await fetchStages()
+      showFeedback(id, 'Delete failed', 'error')
     } finally {
-      setSavingSet(prev => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
+      setSavingSet(prev => { const next = new Set(prev); next.delete(id); return next })
     }
   }, [stagesMap, fetchStages, showFeedback])
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Add new stage
-  // ─────────────────────────────────────────────────────────────────────────
-  const handleAdd = async () => {
-    const trimmedName = newName.trim()
-    if (!trimmedName) {
-      setAddError('Name is required')
-      return
+  const moveUp = async (index: number) => {
+    if (index === 0) return
+    const reordered = [...stages]
+    ;[reordered[index - 1], reordered[index]] = [reordered[index], reordered[index - 1]]
+    const withOrder = reordered.map((s, i) => ({ ...s, sort_order: i }))
+    setStagesMap(new Map(withOrder.map(s => [s.id, s])))
+    try {
+      await api.put('/settings/pipeline/reorder', {
+        stages: withOrder.map(s => ({ id: s.id, name: s.localName, color: s.localColor, sort_order: s.sort_order }))
+      })
+    } catch (err) {
+      console.error('Reorder failed:', err)
+      await fetchStages()
+      showFeedback(-1, 'Reorder failed', 'error')
     }
+  }
 
-    // Duplicate-name guard
+  const moveDown = async (index: number) => {
+    if (index >= stages.length - 1) return
+    const reordered = [...stages]
+    ;[reordered[index], reordered[index + 1]] = [reordered[index + 1], reordered[index]]
+    const withOrder = reordered.map((s, i) => ({ ...s, sort_order: i }))
+    setStagesMap(new Map(withOrder.map(s => [s.id, s])))
+    try {
+      await api.put('/settings/pipeline/reorder', {
+        stages: withOrder.map(s => ({ id: s.id, name: s.localName, color: s.localColor, sort_order: s.sort_order }))
+      })
+    } catch (err) {
+      console.error('Reorder failed:', err)
+      await fetchStages()
+      showFeedback(-1, 'Reorder failed', 'error')
+    }
+  }
+
+  const handleAdd = async (trimmedName: string, color: string) => {
     const duplicate = Array.from(stagesMap.values()).find(
       s => s.name.trim().toLowerCase() === trimmedName.toLowerCase()
     )
     if (duplicate) {
-      setAddError(`"${trimmedName}" already exists`)
+      setAddError('Name already exists')
       return
     }
 
@@ -353,29 +461,22 @@ export function PipelineStages() {
     addingRef.current = true
     setSavingSet(prev => new Set(prev).add(-1))
 
-    const color = newColor
-    const sort_order = stages.length // append at end
-
     try {
       const created: PipelineStage = await api.post('/settings/pipeline', {
         name: trimmedName,
         color,
       })
-
       setStagesMap(prev => {
         const next = new Map(prev)
         next.set(created.id, {
           ...created,
-          sort_order,
+          sort_order: stages.length,
           isEditing: false,
           localName: created.name,
           localColor: created.color,
         })
         return next
       })
-
-      setNewName('')
-      setNewColor('#6366f1')
       setIsAdding(false)
       setAddError('')
       showFeedback(-1, `"${trimmedName}" added!`, 'success')
@@ -384,28 +485,10 @@ export function PipelineStages() {
       setAddError('Failed to add stage')
     } finally {
       addingRef.current = false
-      setSavingSet(prev => {
-        const next = new Set(prev)
-        next.delete(-1)
-        return next
-      })
+      setSavingSet(prev => { const next = new Set(prev); next.delete(-1); return next })
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Cancel add form
-  // ─────────────────────────────────────────────────────────────────────────
-  const handleCancelAdd = () => {
-    if (addingRef.current) return
-    setIsAdding(false)
-    setNewName('')
-    setNewColor('#6366f1')
-    setAddError('')
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -415,25 +498,26 @@ export function PipelineStages() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Pipeline Stages</h2>
-          <p className="text-sm text-slate-500">Manage your casting pipeline stages</p>
+    <div className="flex flex-col gap-4">
+      {/* Sticky header: title + count + add button */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate">Pipeline Stages</h2>
+          <p className="text-xs sm:text-sm text-slate-400">{stages.length} stage{stages.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setIsAdding(true)}
           disabled={isAdding}
-          className="btn-primary flex items-center gap-2 disabled:opacity-50"
+          className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm shrink-0 disabled:opacity-50"
         >
-          <Plus className="w-4 h-4" />
-          Add Stage
+          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Add Stage</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
       {/* Stages list */}
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         <AnimatePresence>
           {stages.map((stage, index) => {
             const isSaving = savingSet.has(stage.id)
@@ -443,215 +527,64 @@ export function PipelineStages() {
               <motion.div
                 key={stage.id}
                 layout
-                initial={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="card p-4"
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.15 }}
               >
-                {/* ── Editing row ──────────────────────────────────────── */}
                 {stage.isEditing ? (
-                  <div className="flex items-center gap-3">
-                    {/* Color picker */}
-                    <input
-                      type="color"
-                      value={stage.localColor}
-                      onChange={e => updateLocal(stage.id, 'color', e.target.value)}
-                      className="w-10 h-10 rounded-lg cursor-pointer flex-shrink-0"
-                    />
-
-                    {/* Name input */}
-                    <div className="flex-1 relative">
-                      <input
-                        type="text"
-                        value={stage.localName}
-                        onChange={e => {
-                          updateLocal(stage.id, 'name', e.target.value)
-                          setFeedback(prev => { const n = new Map(prev); n.delete(stage.id); return n })
-                        }}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && stage.localName.trim()) saveEdit(stage.id)
-                          if (e.key === 'Escape') cancelEdit(stage.id)
-                        }}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 pr-20"
-                        autoFocus
-                      />
-                      {fb?.type === 'error' && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-red-500 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          {fb.msg}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Save */}
-                    <button
-                      onClick={() => saveEdit(stage.id)}
-                      disabled={isSaving || !stage.localName.trim()}
-                      className="btn-primary text-sm flex items-center gap-1 disabled:opacity-50"
-                    >
-                      {isSaving
-                        ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : <Check className="w-3 h-3" />
-                      }
-                      Save
-                    </button>
-
-                    {/* Cancel */}
-                    <button
-                      onClick={() => cancelEdit(stage.id)}
-                      disabled={isSaving}
-                      className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-                    >
-                      <X className="w-3 h-3" />
-                      Cancel
-                    </button>
-                  </div>
+                  <StageEditRow
+                    stage={stage}
+                    onSave={() => saveEdit(stage.id)}
+                    onCancel={() => cancelEdit(stage.id)}
+                    onColorChange={v => updateLocal(stage.id, 'color', v)}
+                    onNameChange={v => updateLocal(stage.id, 'name', v)}
+                    isSaving={isSaving}
+                    error={fb?.type === 'error' ? fb.msg : undefined}
+                  />
                 ) : (
-                  /* ── Display row ───────────────────────────────────── */
-                  <div className="flex items-center gap-3">
-                    {/* Reorder buttons */}
-                    <div className="flex flex-col">
-                      <button
-                        onClick={() => moveUp(index)}
-                        disabled={index === 0}
-                        className="p-0.5 rounded hover:bg-slate-100 disabled:opacity-25"
-                        title="Move up"
-                      >
-                        <ChevronUp className="w-4 h-4 text-slate-400" />
-                      </button>
-                      <button
-                        onClick={() => moveDown(index)}
-                        disabled={index === stages.length - 1}
-                        className="p-0.5 rounded hover:bg-slate-100 disabled:opacity-25"
-                        title="Move down"
-                      >
-                        <ChevronDown className="w-4 h-4 text-slate-400" />
-                      </button>
-                    </div>
-
-                    {/* Color dot */}
-                    <div
-                      className="w-4 h-4 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: stage.color }}
-                    />
-
-                    {/* Stage name */}
-                    <span className="flex-1 font-medium text-slate-900 truncate">
-                      {escapeHtml(stage.name)}
-                    </span>
-
-                    {/* Inline feedback */}
-                    <AnimatePresence>
-                      {fb && (
-                        <motion.span
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0 }}
-                          className={`text-xs font-medium ${
-                            fb.type === 'success' ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {fb.msg}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-
-                    {/* Edit */}
-                    <button
-                      onClick={() => startEdit(stage.id)}
-                      disabled={isSaving}
-                      className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-amber-600 disabled:opacity-40 transition-colors"
-                      title="Edit stage"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-
-                    {/* Delete */}
-                    <button
-                      onClick={() => deleteStage(stage.id)}
-                      disabled={isSaving}
-                      className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 disabled:opacity-40 transition-colors"
-                      title="Delete stage"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <StageCard
+                    stage={stage}
+                    index={index}
+                    totalCount={stages.length}
+                    onEdit={() => startEdit(stage.id)}
+                    onDelete={() => deleteStage(stage.id)}
+                    onMoveUp={() => moveUp(index)}
+                    onMoveDown={() => moveDown(index)}
+                    isSaving={isSaving}
+                    feedback={fb}
+                  />
                 )}
               </motion.div>
             )
           })}
         </AnimatePresence>
-      </div>
 
-      {/* Add new stage form */}
-      <AnimatePresence>
-        {isAdding && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="card p-4 border-2 border-amber-200"
-          >
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={newColor}
-                onChange={e => setNewColor(e.target.value)}
-                className="w-10 h-10 rounded-lg cursor-pointer flex-shrink-0"
+        {/* Add new form */}
+        <AnimatePresence>
+          {isAdding && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <AddStageForm
+                onAdd={handleAdd}
+                onCancel={() => { setIsAdding(false); setAddError('') }}
+                isSaving={savingSet.has(-1)}
+                error={addError}
               />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={newName}
-                  onChange={e => { setNewName(e.target.value); setAddError('') }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && newName.trim()) handleAdd()
-                    if (e.key === 'Escape') handleCancelAdd()
-                  }}
-                  placeholder="Stage name"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 pr-20"
-                  autoFocus
-                />
-                {addError && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {addError}
-                  </span>
-                )}
-              </div>
-
-              <button
-                onClick={handleAdd}
-                disabled={savingSet.has(-1) || !newName.trim()}
-                className="btn-primary text-sm flex items-center gap-1 disabled:opacity-50"
-              >
-                {savingSet.has(-1)
-                  ? <Loader2 className="w-3 h-3 animate-spin" />
-                  : <Plus className="w-3 h-3" />
-                }
-                Add
-              </button>
-
-              <button
-                onClick={handleCancelAdd}
-                disabled={savingSet.has(-1)}
-                className="btn-secondary text-sm flex items-center gap-1 disabled:opacity-50"
-              >
-                <X className="w-3 h-3" />
-                Cancel
-              </button>
-            </div>
-          </motion.div>
+        {/* Empty state */}
+        {stages.length === 0 && !isAdding && (
+          <div className="text-center py-12 px-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <p className="text-sm text-slate-400">No pipeline stages yet. Add your first stage above.</p>
+          </div>
         )}
-      </AnimatePresence>
-
-      {/* Empty state */}
-      {stages.length === 0 && !isAdding && (
-        <div className="text-center py-12 text-slate-400">
-          <p>No pipeline stages yet. Add your first stage above.</p>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

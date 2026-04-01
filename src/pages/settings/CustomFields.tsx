@@ -152,18 +152,19 @@ export function CustomFields() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Custom Fields</h2>
-          <p className="text-sm text-slate-500">Add custom fields to your castings</p>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate">Custom Fields</h2>
+          <p className="text-xs sm:text-sm text-slate-400">{fields.length} field{fields.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm shrink-0"
         >
-          <Plus className="w-4 h-4" />
-          Add Field
+          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Add Field</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
@@ -186,48 +187,48 @@ export function CustomFields() {
       </div>
 
       {/* Fields List */}
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         {groupedFields.length === 0 && !isCreating && (
-          <div className="card p-8 text-center">
-            <p className="text-slate-500">No fields in this group</p>
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
+            <p className="text-sm text-slate-400">No fields in this group</p>
           </div>
         )}
         {groupedFields.map((field) => (
           <motion.div
             key={field.id}
             layout
-            className="card p-4"
+            className="flex items-center gap-2 bg-white rounded-xl border border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm hover:shadow-md transition-shadow"
           >
-            <div className="flex items-center gap-4">
-              <span className="flex-1 font-medium text-slate-900">{field.name}</span>
-              <span className={cn(
-                'px-2 py-0.5 rounded-full text-xs font-medium',
-                field.type === 'text' ? 'bg-blue-100 text-blue-700' :
-                field.type === 'dropdown' ? 'bg-purple-100 text-purple-700' :
-                field.type === 'date' ? 'bg-green-100 text-green-700' :
-                field.type === 'number' ? 'bg-amber-100 text-amber-700' :
-                'bg-slate-100 text-slate-700'
-              )}>
-                {field.type}
+            <span className="flex-1 min-w-0 text-sm sm:text-[15px] font-medium text-slate-800 truncate">{field.name}</span>
+            <span className={cn(
+              'shrink-0 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold',
+              field.type === 'text' ? 'bg-blue-100 text-blue-700' :
+              field.type === 'dropdown' ? 'bg-purple-100 text-purple-700' :
+              field.type === 'date' ? 'bg-emerald-100 text-emerald-700' :
+              field.type === 'number' ? 'bg-amber-100 text-amber-700' :
+              'bg-slate-100 text-slate-600'
+            )}>
+              {field.type}
+            </span>
+            {field.options && (
+              <span className="hidden sm:block shrink-0 text-xs text-slate-400">
+                {Array.isArray(field.options) ? field.options.length : String(field.options).split(',').length} opt
               </span>
-              {field.options && (
-                <span className="text-xs text-slate-400">
-                  {Array.isArray(field.options) ? field.options.length : String(field.options).split(',').length} options
-                </span>
-              )}
-              <button
-                onClick={() => startEdit(field)}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(field.id)}
-                className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+            )}
+            <button
+              onClick={() => startEdit(field)}
+              title="Edit"
+              className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-amber-50 text-slate-400 hover:text-amber-600 active:scale-95 transition-all shrink-0"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleDelete(field.id)}
+              title="Delete"
+              className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 active:scale-95 transition-all shrink-0"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           </motion.div>
         ))}
       </div>
@@ -237,7 +238,7 @@ export function CustomFields() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card p-6 space-y-4"
+          className="bg-amber-50/60 rounded-xl border-2 border-amber-200 p-4 sm:p-6 space-y-4"
         >
           <h3 className="font-semibold text-slate-900">
             {editingField ? 'Edit Field' : 'Add New Field'}

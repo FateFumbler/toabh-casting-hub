@@ -79,33 +79,34 @@ export function TeamManagement() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Team Management</h2>
-          <p className="text-sm text-slate-500">Manage your team members</p>
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900 truncate">Team Management</h2>
+          <p className="text-xs sm:text-sm text-slate-400">{team.length} member{team.length !== 1 ? 's' : ''}</p>
         </div>
         <button
           onClick={() => { setEditingMember(null); setModalOpen(true) }}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-1.5 text-xs sm:text-sm shrink-0"
         >
-          <Plus className="w-4 h-4" />
-          Add Member
+          <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Add Member</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
       {/* Invite Form */}
-      <div className="card p-4">
-        <div className="flex items-center gap-3">
-          <Mail className="w-5 h-5 text-slate-400" />
+      <div className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 shrink-0" />
           <input
             type="email"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="Invite via email..."
-            className="flex-1 px-3 py-2 border border-slate-200 rounded-xl bg-white/50"
+            className="flex-1 min-w-0 px-2.5 py-1.5 sm:px-3 sm:py-2 border border-slate-200 rounded-xl bg-white text-xs sm:text-sm"
           />
           <select
             value={inviteRole}
             onChange={(e) => setInviteRole(e.target.value)}
-            className="px-3 py-2 border border-slate-200 rounded-xl bg-white/50 text-sm"
+            className="px-2 py-1.5 sm:px-3 sm:py-2 border border-slate-200 rounded-xl bg-white text-xs sm:text-sm shrink-0"
           >
             <option value="Admin">Admin</option>
             <option value="Booker">Booker</option>
@@ -123,33 +124,33 @@ export function TeamManagement() {
           <motion.div
             key={member.id}
             layout
-            className={cn('card p-4', !member.is_active && 'opacity-60')}
+            className={cn(
+              'flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-3 py-2.5 sm:px-4 sm:py-3 shadow-sm hover:shadow-md transition-all',
+              !member.is_active && 'opacity-60'
+            )}
           >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-semibold">
-                {getInitials(member.name)}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-slate-900">{member.name}</h3>
-                <p className="text-sm text-slate-500">{member.role}</p>
-                {member.email && (
-                  <p className="text-xs text-slate-400 mt-1">{member.email}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => { setEditingMember(member); setModalOpen(true) }}
-                  className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(member)}
-                  className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-semibold text-sm shrink-0">
+              {getInitials(member.name)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-slate-900 text-sm sm:text-[15px] truncate">{member.name}</p>
+              <p className="text-xs text-slate-400 truncate">{member.email || member.role}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => { setEditingMember(member); setModalOpen(true) }}
+                title="Edit"
+                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-amber-50 text-slate-400 hover:text-amber-600 active:scale-95 transition-all"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(member)}
+                title="Delete"
+                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-xl hover:bg-red-50 text-slate-400 hover:text-red-500 active:scale-95 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
           </motion.div>
         ))}
