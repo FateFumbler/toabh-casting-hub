@@ -81,12 +81,11 @@ export interface LeadSource {
 }
 
 export interface CustomField {
-  id: number
+  id: number | string
   name: string
-  field_type: 'text' | 'dropdown' | 'date' | 'number' | 'file'
-  group?: 'contact_info' | 'project_info' | 'financials' | 'custom'
-  tab?: string
-  options?: string
+  type: 'text' | 'dropdown' | 'date' | 'number' | 'file'
+  tab: string
+  options?: string | string[]
   required: boolean
 }
 

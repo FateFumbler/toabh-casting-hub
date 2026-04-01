@@ -22,6 +22,8 @@ export function RolesPermissions() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState<{msg: string; type: 'success'|'error'} | null>(null)
+  const [snapshot, setSnapshot] = useState<Role[] | null>(null)
 
   const fetchRoles = async () => {
     try {
@@ -46,6 +48,12 @@ export function RolesPermissions() {
     fetchRoles()
   }, [])
 
+  useEffect(() => {
+    if (!feedback) return
+    const t = setTimeout(() => setFeedback(null), 3000)
+    return () => clearTimeout(t)
+  }, [feedback])
+
   const togglePermission = (roleId: number, permissionId: string) => {
     setRoles((prev) => prev.map((role) => {
       if (role.id !== roleId) return role
@@ -60,13 +68,17 @@ export function RolesPermissions() {
   }
 
   const handleSave = async () => {
+    setSnapshot([...roles])
     setSaving(true)
     try {
       await api.put('/settings/roles', roles)
-    } catch (err) {
-      console.error('Failed to save:', err)
+      setFeedback({ msg: 'Changes saved successfully!', type: 'success' })
+    } catch (err: any) {
+      if (snapshot) setRoles(snapshot)
+      setFeedback({ msg: err?.response?.data?.error || 'Failed to save. Please try again.', type: 'error' })
     } finally {
       setSaving(false)
+      setSnapshot(null)
     }
   }
 
@@ -101,6 +113,11 @@ export function RolesPermissions() {
         >
           {saving ? 'Saving...' : 'Save Changes'}
         </button>
+        {feedback && (
+          <span className={`text-sm font-medium ml-3 ${feedback.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+            {feedback.msg}
+          </span>
+        )}
       </div>
 
       <div className="card overflow-hidden">
@@ -119,6 +136,13 @@ export function RolesPermissions() {
               </tr>
             </thead>
             <tbody>
+              {roles.length === 0 && (
+                <tr>
+                  <td colSpan={999} className="text-center py-8 text-gray-400">
+                    No roles configured. Default roles will be created on save.
+                  </td>
+                </tr>
+              )}
               {permissions.map((permission) => (
                 <tr key={permission.id} className="border-b border-slate-50">
                   <td className="px-4 py-3 text-sm text-slate-700">{permission.name}</td>

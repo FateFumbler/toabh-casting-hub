@@ -5,6 +5,7 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // Keys match backend dashboard_modules.json
+const KNOWN_MODULES = ['kanban', 'calendar', 'activityFeed', 'quickActions', 'charts']
 const dashboardModules = [
   { id: 'kanban', name: 'Kanban Board', description: 'Drag-and-drop casting pipeline board' },
   { id: 'calendar', name: 'Calendar View', description: 'Shoot date calendar overview' },
@@ -58,6 +59,7 @@ export function DashboardSettings() {
   }, [feedback])
 
   const toggleModule = (id: string) => {
+    if (!KNOWN_MODULES.includes(id)) return
     setModules((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
@@ -65,8 +67,13 @@ export function DashboardSettings() {
     const snapshot = { ...modules }
     setSaving(true)
     try {
+      // Only save known module keys to prevent key accumulation
+      const filteredModules: Record<string, boolean> = {}
+      for (const key of KNOWN_MODULES) {
+        filteredModules[key] = modules[key] ?? true
+      }
       await api.put('/settings/dashboard-modules', {
-        ...modules,
+        ...filteredModules,
         default_view: defaultView,
       })
       setFeedback({ msg: 'Settings saved!', type: 'success' })

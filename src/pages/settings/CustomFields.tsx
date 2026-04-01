@@ -30,8 +30,8 @@ export function CustomFields() {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     name: '',
-    field_type: 'text' as CustomField['field_type'],
-    group: 'project_info' as CustomField['group'],
+    field_type: 'text' as CustomField['type'],
+    group: 'project_info' as any,
     options: '',
     required: false,
   })
@@ -70,27 +70,29 @@ export function CustomFields() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      // Map form field names to API field names
-      const apiField = {
+      // Build payload with consistent 'type' field
+      const tabMap: Record<string, string> = {
+        contact_info: 'Contact Info',
+        project_info: 'Project Info',
+        financials: 'Financials',
+      }
+      const payload = {
         name: form.name,
         type: form.field_type,
-        tab: form.group === 'contact_info' ? 'Contact Info' :
-             form.group === 'project_info' ? 'Project Info' :
-             form.group === 'financials' ? 'Financials' :
-             form.group,
-        options: form.options,
+        tab: tabMap[form.group as string] || form.group || 'Custom',
+        options: typeof form.options === 'string' ? form.options.split(',').map(o => o.trim()).filter(Boolean) : form.options,
         required: form.required,
       }
       if (editingField) {
         const updated = fields.map((f) =>
-          f.id === editingField.id ? { ...f, ...apiField } : f
+          f.id === editingField.id ? { ...f, ...payload } : f
         )
         await api.put('/settings/custom-fields', { fields: updated })
         setFields(updated)
       } else {
         const maxId = Math.max(...fields.map((f) => Number(f.id) || 0), 0)
-        const created = { ...apiField, id: String(maxId + 1) }
-        await api.post('/settings/custom-fields', { fields: [...fields, created] })
+        const created = { ...payload, id: String(maxId + 1) }
+        await api.post('/settings/custom-fields', created)
         setFields([...fields, created as unknown as CustomField])
       }
       resetForm()
@@ -115,7 +117,7 @@ export function CustomFields() {
   const resetForm = () => {
     setEditingField(null)
     setIsCreating(false)
-    setForm({ name: '', field_type: 'text' as const, group: 'project_info' as const, options: '', required: false })
+    setForm({ name: '', field_type: 'text' as any, group: 'project_info' as any, options: '', required: false })
   }
 
   const startEdit = (field: CustomField) => {
@@ -124,9 +126,9 @@ export function CustomFields() {
     const groupKey = normalizeTab(field.tab) as 'custom' | 'contact_info' | 'project_info' | 'financials'
     setForm({
       name: field.name,
-      field_type: (field as any).type || field.field_type,
+      field_type: field.type,
       group: groupKey,
-      options: field.options || '',
+      options: Array.isArray(field.options) ? field.options.join(', ') : (field.options || ''),
       required: field.required,
     })
   }
@@ -199,16 +201,18 @@ export function CustomFields() {
               <span className="flex-1 font-medium text-slate-900">{field.name}</span>
               <span className={cn(
                 'px-2 py-0.5 rounded-full text-xs font-medium',
-                field.field_type === 'text' ? 'bg-blue-100 text-blue-700' :
-                field.field_type === 'dropdown' ? 'bg-purple-100 text-purple-700' :
-                field.field_type === 'date' ? 'bg-green-100 text-green-700' :
-                field.field_type === 'number' ? 'bg-amber-100 text-amber-700' :
+                field.type === 'text' ? 'bg-blue-100 text-blue-700' :
+                field.type === 'dropdown' ? 'bg-purple-100 text-purple-700' :
+                field.type === 'date' ? 'bg-green-100 text-green-700' :
+                field.type === 'number' ? 'bg-amber-100 text-amber-700' :
                 'bg-slate-100 text-slate-700'
               )}>
-                {field.field_type}
+                {field.type}
               </span>
               {field.options && (
-                <span className="text-xs text-slate-400">{field.options.split(',').length} options</span>
+                <span className="text-xs text-slate-400">
+                  {Array.isArray(field.options) ? field.options.length : String(field.options).split(',').length} options
+                </span>
               )}
               <button
                 onClick={() => startEdit(field)}
@@ -252,7 +256,7 @@ export function CustomFields() {
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Type</label>
               <select
                 value={form.field_type}
-                onChange={(e) => setForm({ ...form, field_type: e.target.value as CustomField['field_type'] })}
+                onChange={(e) => setForm({ ...form, field_type: e.target.value as CustomField['type'] })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl"
               >
                 {fieldTypes.map((t) => (
@@ -264,7 +268,7 @@ export function CustomFields() {
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Group</label>
               <select
                 value={form.group}
-                onChange={(e) => setForm({ ...form, group: e.target.value as CustomField['group'] })}
+                onChange={(e) => setForm({ ...form, group: e.target.value })}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl"
               >
                 {groups.map((g) => (

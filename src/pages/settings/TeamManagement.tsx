@@ -11,6 +11,7 @@ export function TeamManagement() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState('Booker')
 
   const fetchTeam = async () => {
     try {
@@ -43,7 +44,7 @@ export function TeamManagement() {
       await api.post('/team', {
         name: inviteEmail.split('@')[0],
         email: inviteEmail,
-        role: 'Member',
+        role: inviteRole,
         phone: '',
         active: true,
       })
@@ -89,6 +90,15 @@ export function TeamManagement() {
             placeholder="Invite via email..."
             className="flex-1 px-3 py-2 border border-slate-200 rounded-xl bg-white/50"
           />
+          <select
+            value={inviteRole}
+            onChange={(e) => setInviteRole(e.target.value)}
+            className="px-3 py-2 border border-slate-200 rounded-xl bg-white/50 text-sm"
+          >
+            <option value="Admin">Admin</option>
+            <option value="Booker">Booker</option>
+            <option value="Viewer">Viewer</option>
+          </select>
           <button onClick={handleInvite} disabled={!inviteEmail.trim()} className="btn-primary">
             Invite
           </button>
@@ -163,6 +173,16 @@ function TeamMemberModal({
     active: true,
   })
   const [saving, setSaving] = useState(false)
+  const [roleOptions, setRoleOptions] = useState<string[]>(['Admin', 'Booker', 'Viewer'])
+
+  useEffect(() => {
+    api.get('/settings/roles')
+      .then((data: any) => {
+        const names = data?.roles?.map((r: any) => r.name) || ['Admin', 'Booker', 'Viewer']
+        setRoleOptions(names)
+      })
+      .catch(() => setRoleOptions(['Admin', 'Booker', 'Viewer']))
+  }, [])
 
   useEffect(() => {
     if (member) {
@@ -244,12 +264,16 @@ function TeamMemberModal({
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Role</label>
-            <input
-              type="text"
+            <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               className="w-full px-3 py-2 border border-slate-200 rounded-xl"
-            />
+            >
+              <option value="">Select role</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>

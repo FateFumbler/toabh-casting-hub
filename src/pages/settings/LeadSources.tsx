@@ -3,6 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Pencil, Trash2, Loader2, Check, X, AlertCircle } from 'lucide-react'
 import { api } from '@/lib/api'
 
+// XSS sanitization helper
+const escapeHtml = (str: string) =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
 export interface LeadSource {
   id: number
   name: string
@@ -289,7 +293,7 @@ export function LeadSources() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <span className="flex-1 font-medium text-slate-900">{source.name}</span>
+                  <span className="flex-1 font-medium text-slate-900">{escapeHtml(source.name)}</span>
 
                   {/* Feedback inline */}
                   {feedback.get(source.id) && (

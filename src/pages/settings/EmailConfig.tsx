@@ -48,10 +48,22 @@ export function EmailConfig() {
   const handleTest = async () => {
     setTesting(true)
     try {
-      await api.post('/settings/email-config/test', form)
-      setFeedback({ msg: 'Test email sent! (or SMTP not configured)', type: 'success' })
-    } catch {
-      setFeedback({ msg: 'Test failed — check your SMTP settings', type: 'error' })
+      const res = await api.post('/settings/email-config/test', {
+        smtp_host: form.smtp_host,
+        smtp_port: form.smtp_port,
+        smtp_username: form.smtp_username,
+        smtp_password: form.smtp_password,
+        from_address: form.from_address,
+      })
+      setFeedback({
+        msg: res.data?.message || 'Test email sent!',
+        type: res.data?.success ? 'success' : 'error'
+      })
+    } catch (err: any) {
+      setFeedback({
+        msg: err?.response?.data?.message || 'Test failed — check your SMTP settings',
+        type: 'error'
+      })
     } finally {
       setTesting(false)
     }

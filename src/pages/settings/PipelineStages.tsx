@@ -14,8 +14,13 @@ interface StageState extends PipelineStage {
   localChanges: { name: string; color: string }
 }
 
+// XSS sanitization helper
+const escapeHtml = (str: string) =>
+  str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
 export function PipelineStages() {
   const [stagesMap, setStagesMap] = useState<Map<number, StageState>>(new Map())
+  const [stagesList, setStagesList] = useState<StageState[]>([])
   const [loading, setLoading] = useState(true)
   const [newItem, setNewItem] = useState({ name: '', color: '#6366f1' })
   const [isAdding, setIsAdding] = useState(false)
@@ -35,12 +40,57 @@ export function PipelineStages() {
         })
       })
       setStagesMap(map)
+      setStagesList(Array.from(map.values()))
     } catch (err) {
       console.error('Failed to fetch stages:', err)
     } finally {
       setLoading(false)
     }
   }, [])
+
+  const moveUp = async (index: number) => {
+    if (index === 0) return
+    const newList = [...stagesList];
+    [newList[index - 1], newList[index]] = [newList[index], newList[index - 1]]
+    setStagesList(newList)
+    setStagesMap(prev => {
+      const next = new Map(prev)
+      newList.forEach((s) => {
+        const existing = next.get(s.id)
+        if (existing) next.set(s.id, { ...existing })
+      })
+      return next
+    })
+    try {
+      await api.put('/settings/pipeline/reorder', {
+        stages: newList.map((s, i) => ({ id: s.id, name: s.name, color: s.color, sort_order: i }))
+      })
+    } catch (err) {
+      console.error('Failed to reorder:', err)
+    }
+  }
+
+  const moveDown = async (index: number) => {
+    if (index === stagesList.length - 1) return
+    const newList = [...stagesList];
+    [newList[index], newList[index + 1]] = [newList[index + 1], newList[index]]
+    setStagesList(newList)
+    setStagesMap(prev => {
+      const next = new Map(prev)
+      newList.forEach((s) => {
+        const existing = next.get(s.id)
+        if (existing) next.set(s.id, { ...existing })
+      })
+      return next
+    })
+    try {
+      await api.put('/settings/pipeline/reorder', {
+        stages: newList.map((s, i) => ({ id: s.id, name: s.name, color: s.color, sort_order: i }))
+      })
+    } catch (err) {
+      console.error('Failed to reorder:', err)
+    }
+  }
 
   useEffect(() => {
     fetchStages()
@@ -220,7 +270,7 @@ export function PipelineStages() {
     )
   }
 
-  const stages = Array.from(stagesMap.values())
+  const stages = stagesList.length > 0 ? stagesList : Array.from(stagesMap.values())
 
   return (
     <div className="space-y-6">
@@ -307,7 +357,7 @@ export function PipelineStages() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => {}}
+                      onClick={() => moveUp(index)}
                       disabled={index === 0}
                       className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
                       title="Move up"
@@ -315,7 +365,7 @@ export function PipelineStages() {
                       <ChevronUp className="w-4 h-4 text-slate-400" />
                     </button>
                     <button
-                      onClick={() => {}}
+                      onClick={() => moveDown(index)}
                       disabled={index === stages.length - 1}
                       className="p-1 rounded hover:bg-slate-100 disabled:opacity-30"
                       title="Move down"
@@ -327,7 +377,7 @@ export function PipelineStages() {
                     className="w-4 h-4 rounded-full flex-shrink-0"
                     style={{ backgroundColor: stage.color }}
                   />
-                  <span className="flex-1 font-medium text-slate-900">{stage.name}</span>
+                  <span className="flex-1 font-medium text-slate-900">{escapeHtml(stage.name)}</span>
 
                   {/* Feedback inline */}
                   {feedback.get(stage.id) && (
