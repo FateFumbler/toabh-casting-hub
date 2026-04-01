@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Plus, ChevronDown, ChevronRight, Pencil, Trash2, Loader2, Phone, Mail } from 'lucide-react'
+import { Search, Plus, ChevronDown, ChevronRight, Pencil, Trash2, Loader2, Phone, Mail, MessageCircle } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn, formatDate, getInitials } from '@/lib/utils'
 import { useOverlay } from '@/hooks/useOverlayManager'
@@ -109,124 +109,185 @@ export function Clients() {
           <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
         </div>
       ) : filteredClients.length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-slate-500">No clients found</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+          <p className="text-slate-400 text-sm">No clients found</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {filteredClients.map((client) => {
             const clientCastings = getClientCastings(client.id)
             const isExpanded = expandedClient === client.id
+
+            // Format phone for WhatsApp: strip non-digits, remove leading 0/91
+            const whatsappNumber = client.phone
+              ? client.phone.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, '')
+              : ''
 
             return (
               <motion.div
                 key={client.id}
                 layout
-                className="card overflow-hidden"
+                initial={false}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
               >
+                {/* ── CARD BODY — fully clickable ───────────────────────── */}
                 <div
-                  className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50/50 transition-colors"
+                  className="flex items-start gap-3 p-3 sm:p-4 cursor-pointer active:bg-slate-50 transition-colors select-none"
                   onClick={() => setExpandedClient(isExpanded ? null : client.id)}
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-semibold">
+                  {/* Avatar */}
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-semibold text-sm sm:text-base shrink-0">
                     {getInitials(client.name)}
                   </div>
+
+                  {/* Info column */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-slate-900">{client.name}</h3>
+                    {/* Row 1: Name + company badge */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-slate-900 text-sm sm:text-[15px] truncate max-w-[120px] sm:max-w-[180px]">
+                        {client.name}
+                      </span>
                       {client.company && (
-                        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        <span className="text-[10px] sm:text-xs text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full shrink-0 truncate max-w-[80px] sm:max-w-[120px]">
                           {client.company}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-500">
-                      {client.phone && (
-                        <a
-                          href={'tel:' + client.phone}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 hover:text-amber-600 transition-colors"
-                        >
-                          <Phone className="w-3 h-3 shrink-0" />
-                          <span className="hidden sm:inline">{client.phone}</span>
-                        </a>
-                      )}
-                      {client.email && (
-                        <a
-                          href={'mailto:' + client.email}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1 hover:text-amber-600 transition-colors truncate"
-                        >
-                          <Mail className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{client.email}</span>
-                        </a>
-                      )}
-                    </div>
+
+                    {/* Row 2: Email */}
+                    {client.email && (
+                      <p className="text-[11px] sm:text-xs text-slate-400 truncate mt-0.5 max-w-[200px] sm:max-w-none">
+                        {client.email}
+                      </p>
+                    )}
+
+                    {/* Row 3: Phone */}
+                    {client.phone && (
+                      <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
+                        {client.phone}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    {/* Castings count — full on sm+, badge on mobile */}
-                    <div className="hidden xs:flex flex-col items-end mr-1">
-                      <span className="text-xs font-semibold text-slate-600">{clientCastings.length}</span>
-                      <span className="text-[10px] text-slate-400">castings</span>
-                    </div>
-                    <span className="xs:hidden flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-xs font-semibold text-slate-600">
-                      {clientCastings.length}
-                    </span>
+
+                  {/* Action icons — top-right, independent click targets */}
+                  <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         setEditingClient(client)
                         setModalOpen(true)
                       }}
-                      className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 active:scale-95 transition-all min-w-[36px] min-h-[36px] flex items-center justify-center"
+                      title="Edit client"
+                      className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 active:scale-95 transition-all duration-150"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
                         handleDelete(client)
                       }}
-                      className="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 active:scale-95 transition-all min-w-[36px] min-h-[36px] flex items-center justify-center"
+                      title="Delete client"
+                      className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 active:scale-95 transition-all duration-150"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
-                    {isExpanded ? (
-                      <ChevronDown className="w-5 h-5 text-slate-400" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-slate-400" />
-                    )}
+                    <div className="w-7 h-8 sm:w-8 flex items-center justify-center text-slate-400">
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                    </div>
                   </div>
                 </div>
 
+                {/* ── CTA ROW — Call + WhatsApp ─────────────────────────── */}
+                {(client.phone || client.email) && (
+                  <div
+                    className="flex items-center gap-2 px-3 pb-3 sm:px-4 sm:pb-4 pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {client.phone && (
+                      <a
+                        href={`tel:${client.phone}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-[0.97] transition-all text-[11px] sm:text-xs font-medium"
+                      >
+                        <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span>Call</span>
+                      </a>
+                    )}
+                    {client.phone && (
+                      <a
+                        href={`https://wa.me/${whatsappNumber}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-green-50 text-green-600 hover:bg-green-100 active:scale-[0.97] transition-all text-[11px] sm:text-xs font-medium"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span>WhatsApp</span>
+                      </a>
+                    )}
+                    {!client.phone && client.email && (
+                      <a
+                        href={`mailto:${client.email}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-50 text-slate-600 hover:bg-slate-100 active:scale-[0.97] transition-all text-[11px] sm:text-xs font-medium"
+                      >
+                        <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span>Email</span>
+                      </a>
+                    )}
+                    {/* Castings count badge */}
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 shrink-0">
+                      <span className="text-[10px] sm:text-xs font-semibold text-slate-600 leading-none">
+                        {clientCastings.length}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── EXPANDED CASTINGS ─────────────────────────────────── */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: 'auto' }}
-                      exit={{ height: 0 }}
-                      className="overflow-hidden"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      className="overflow-hidden border-t border-slate-100"
                     >
-                      <div className="border-t border-slate-100 p-4 bg-slate-50/30">
-                        <h4 className="text-sm font-medium text-slate-700 mb-3">Castings</h4>
+                      <div className="px-3 py-3 sm:px-4 sm:py-4 bg-slate-50/50">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                            Castings
+                          </span>
+                          <span className="text-[10px] sm:text-xs text-slate-400">
+                            {clientCastings.length} total
+                          </span>
+                        </div>
                         {clientCastings.length === 0 ? (
-                          <p className="text-sm text-slate-400">No castings for this client</p>
+                          <p className="text-xs sm:text-sm text-slate-400 italic">No castings yet</p>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-1.5 sm:space-y-2">
                             {clientCastings.map((casting) => (
                               <div
                                 key={casting.id}
-                                className="flex items-center justify-between p-3 bg-white rounded-xl"
+                                className="flex items-center justify-between p-2.5 sm:p-3 bg-white rounded-xl border border-slate-100"
                               >
-                                <div>
-                                  <p className="font-medium text-slate-900">{casting.project_name || 'Untitled'}</p>
-                                  <p className="text-xs text-slate-500">{formatDate(casting.shoot_date_start)}</p>
+                                <div className="flex-1 min-w-0 mr-3">
+                                  <p className="text-xs sm:text-sm font-medium text-slate-800 truncate">
+                                    {casting.project_name || 'Untitled'}
+                                  </p>
+                                  <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">
+                                    {casting.shoot_date_start ? formatDate(casting.shoot_date_start) : 'No date set'}
+                                  </p>
                                 </div>
                                 <span className={cn(
-                                  'px-2 py-1 rounded-full text-xs font-medium',
-                                  casting.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                  'shrink-0 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold',
+                                  casting.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
                                   casting.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' :
-                                  'bg-blue-100 text-blue-700'
+                                  casting.status === 'NEW' ? 'bg-blue-100 text-blue-700' :
+                                  'bg-slate-100 text-slate-600'
                                 )}>
                                   {casting.status}
                                 </span>
