@@ -64,31 +64,36 @@ export function KanbanBoard({
 
     if (!over) return
     if (updatingRef.current) return
+    updatingRef.current = true
 
     const draggingId = Number(active.id)
-    const overId = String(over.id)
-
     const dragging = castings.find((c) => c.id === draggingId)
-    if (!dragging) return
+    if (!dragging) {
+      updatingRef.current = false
+      return
+    }
 
-    // Determine target stage: over can be a column (stage name) or a card (card id)
     let targetStage: string
-    // Check if over is a column (stage name matches a pipeline stage name)
-    if (pipeline.some(s => s.name === overId)) {
-      targetStage = overId
-    } else {
-      // Dropped on a card — look up that card's stage
-      const overCard = castings.find(c => String(c.id) === overId)
+
+    if (over.data.current?.type === 'COLUMN') {
+      // Dropped directly on a column (empty column or column header)
+      targetStage = over.data.current.stage
+    } else if (over.data.current?.type === 'CARD') {
+      // Dropped on another card — use that card's stage
+      const overCard = castings.find((c) => c.id === Number(over.id))
       targetStage = overCard ? resolveStage(overCard) : resolveStage(dragging)
+    } else {
+      // Fallback: over.id might be the stage name directly
+      targetStage = String(over.id)
     }
 
     const currentStage = resolveStage(dragging)
-
-    // No-op if dropped in same column
-    if (targetStage === currentStage) return
+    if (targetStage === currentStage) {
+      updatingRef.current = false
+      return
+    }
 
     // Optimistic update — immediately move card in local state
-    updatingRef.current = true
     onCastingsChange?.(
       castings.map((c) =>
         c.id === draggingId ? { ...c, pipeline_stage: targetStage, status: targetStage } : c

@@ -16,7 +16,10 @@ export function SortableCard({ casting, onClick }: SortableCardProps) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: String(casting.id) })
+  } = useSortable({
+    id: String(casting.id),
+    data: { type: 'CARD', casting },
+  })
 
   const style = {
     transform: CSS.Transform.toString(transform),

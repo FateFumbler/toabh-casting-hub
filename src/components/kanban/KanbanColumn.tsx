@@ -1,5 +1,7 @@
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
 import type { Casting, PipelineStage } from '@/types'
+import { cn } from '@/lib/utils'
 import { SortableCard } from './KanbanCard'
 
 interface KanbanColumnProps {
@@ -10,6 +12,11 @@ interface KanbanColumnProps {
 
 export function KanbanColumn({ stage, castings, onCastingClick }: KanbanColumnProps) {
   const cardIds = castings.map((c) => String(c.id))
+
+  const { setNodeRef, isOver } = useDroppable({
+    id: `column-${stage.id}`,
+    data: { type: 'COLUMN', stage: stage.name },
+  })
 
   return (
     <div className="flex-shrink-0 w-72 flex flex-col">
@@ -27,8 +34,13 @@ export function KanbanColumn({ stage, castings, onCastingClick }: KanbanColumnPr
 
       {/* Droppable area for this stage */}
       <div
-        id={stage.name}
-        className="flex flex-col gap-2 min-h-[200px] p-3 bg-slate-50/80 rounded-xl border border-slate-100"
+        ref={setNodeRef}
+        className={cn(
+          'flex flex-col gap-2 min-h-[200px] p-3 rounded-2xl border transition-all duration-150',
+          isOver
+            ? 'border-amber-400 bg-amber-50/40 shadow-lg ring-2 ring-amber-300/50'
+            : 'bg-white/40 backdrop-blur-sm border-white/20'
+        )}
       >
         <SortableContext
           items={cardIds}
