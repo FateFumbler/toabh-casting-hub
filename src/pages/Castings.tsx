@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -25,14 +25,10 @@ import { CastingDetailModal } from '@/components/CastingDetailModal'
 import { AdvancedFilters } from '@/components/AdvancedFilters'
 import type { Casting, PipelineStage } from '@/types'
 import { KanbanBoard } from '@/components/kanban'
-
-const statusColors: { [key: string]: string } = {
-  NEW: 'bg-blue-100 text-blue-700',
-  IN_PROGRESS: 'bg-amber-100 text-amber-700',
-  REVIEW: 'bg-purple-100 text-purple-700',
-  COMPLETED: 'bg-green-100 text-green-700',
-  CANCELLED: 'bg-red-100 text-red-700',
-}
+import FormControl from '@mui/material/FormControl'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
+import CircularProgress from '@mui/material/CircularProgress'
 
 export function Castings() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -248,6 +244,7 @@ export function Castings() {
       ) : (
         <ListView
           castings={filteredCastings}
+          pipeline={pipeline}
           setCastings={setCastings}
           sortConfig={sortConfig}
           onSort={handleSort}
@@ -291,17 +288,62 @@ export function Castings() {
 
 function ListView({
   castings,
-  setCastings: _setCastings,
+  pipeline,
+  setCastings,
   sortConfig,
   onSort,
   onCastingClick,
 }: {
   castings: Casting[]
+  pipeline: PipelineStage[]
   setCastings: React.Dispatch<React.SetStateAction<Casting[]>>
   sortConfig: { key: string; direction: 'asc' | 'desc' }
   onSort: (key: string) => void
   onCastingClick: (c: Casting) => void
 }) {
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [flashingId, setFlashingId] = useState<number | null>(null)
+  // Track in-flight request versions to handle rapid changes
+  const versionRef = useRef<Map<number, number>>(new Map())
+
+  const handleStatusChange = async (castingId: number, newStatus: string) => {
+    const casting = castings.find((c) => c.id === castingId)
+    if (!casting || casting.status === newStatus) return
+
+    const currentVersion = (versionRef.current.get(castingId) ?? 0) + 1
+    versionRef.current.set(castingId, currentVersion)
+    const thisVersion = currentVersion
+
+    const oldStatus = casting.status
+
+    // Optimistic update
+    setCastings((prev) =>
+      prev.map((c) => (c.id === castingId ? { ...c, status: newStatus } : c))
+    )
+    setUpdatingId(castingId)
+    setFlashingId(castingId)
+    setTimeout(() => {
+      if (flashingId === castingId) setFlashingId(null)
+    }, 1000)
+
+    try {
+      await api.put(`/castings/${castingId}/status`, { status: newStatus })
+      // Only clear updating if no newer request has superseded this one
+      if (versionRef.current.get(castingId) === thisVersion) {
+        setUpdatingId(null)
+      }
+    } catch {
+      // Rollback only if this is still the latest request for this row
+      if (versionRef.current.get(castingId) === thisVersion) {
+        setCastings((prev) =>
+          prev.map((c) => (c.id === castingId ? { ...c, status: oldStatus } : c))
+        )
+        setUpdatingId(null)
+        toast.error('Failed to update status')
+      }
+    }
+  }
+
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
@@ -322,9 +364,12 @@ function ListView({
                 >
                   <div className="flex items-center gap-1">
                     {label}
-                    {sortConfig.key === key && (
-                      sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-                    )}
+                    {sortConfig.key === key &&
+                      (sortConfig.direction === 'asc' ? (
+                        <ChevronUp className="w-3 h-3" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3" />
+                      ))}
                   </div>
                 </th>
               ))}
@@ -334,75 +379,200 @@ function ListView({
             </tr>
           </thead>
           <tbody>
-            {castings.map((casting) => (
-              <tr
-                key={casting.id}
-                onClick={() => onCastingClick(casting)}
-                className="border-b border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors"
-              >
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs font-medium">
-                      {getInitials(casting.client_name)}
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{casting.client_name}</p>
-                      <p className="text-xs text-slate-500">{casting.client_company}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900">{casting.project_name || '-'}</p>
-                  <p className="text-xs text-slate-500">{casting.location || '-'}</p>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={cn(
-                    'px-2 py-1 rounded-full text-xs font-medium',
-                    statusColors[casting.status] || 'bg-slate-100 text-slate-600'
-                  )}>
-                    {casting.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-slate-600">
-                  {formatDate(casting.shoot_date_start) || '-'}
-                </td>
-                <td className="px-4 py-3">
-                  {casting.budget_min || casting.budget_max ? (
-                    <span className="text-sm font-medium text-slate-900">
-                      {formatCurrency(casting.budget_min)}
-                      {casting.budget_min && casting.budget_max && ' - '}
-                      {formatCurrency(casting.budget_max)}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">-</span>
+            {castings.map((casting) => {
+              const currentStage = pipeline.find((s) => s.name === casting.status)
+              const stageColor = currentStage?.color || '#64748b'
+              const isUpdating = updatingId === casting.id
+              const isFlashing = flashingId === casting.id
+
+              return (
+                <tr
+                  key={casting.id}
+                  className={cn(
+                    'border-b border-slate-50 transition-all',
+                    isFlashing
+                      ? 'bg-green-50 ring-1 ring-green-200'
+                      : 'hover:bg-slate-50 cursor-pointer',
+                    isUpdating && 'opacity-60 pointer-events-none'
                   )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    {casting.client_contact && (
-                      <>
-                        <a
-                          href={`tel:+91${casting.client_contact}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </a>
-                        <a
-                          href={`https://wa.me/91${casting.client_contact}?text=Regarding ${casting.project_name || 'your casting'}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-green-600"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </a>
-                      </>
+                >
+                  {/* Clickable cells — status cell stops propagation */}
+                  <td
+                    className="px-4 py-3"
+                    onClick={() => !isUpdating && onCastingClick(casting)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs font-medium">
+                        {getInitials(casting.client_name)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900">{casting.client_name}</p>
+                        <p className="text-xs text-slate-500">{casting.client_company}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    className="px-4 py-3"
+                    onClick={() => !isUpdating && onCastingClick(casting)}
+                  >
+                    <p className="font-medium text-slate-900">{casting.project_name || '-'}</p>
+                    <p className="text-xs text-slate-500">{casting.location || '-'}</p>
+                  </td>
+
+                  {/* Status cell — MUI Select, no row click */}
+                  <td
+                    className="px-4 py-3 min-w-[160px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <FormControl size="small" fullWidth error={!currentStage}>
+                      <Select
+                        value={casting.status || ''}
+                        onChange={(e) =>
+                          handleStatusChange(casting.id, String(e.target.value))
+                        }
+                        disabled={isUpdating}
+                        displayEmpty
+                        IconComponent={
+                          isUpdating
+                            ? () => (
+                                <CircularProgress
+                                  size={14}
+                                  sx={{ mx: 1, color: 'text.secondary' }}
+                                />
+                              )
+                            : undefined
+                        }
+                        sx={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          borderRadius: '9999px',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          '& .MuiSelect-select': {
+                            py: '4px',
+                            pl: '10px',
+                            pr: '32px',
+                            color: stageColor,
+                            backgroundColor: `${stageColor}14`,
+                            borderRadius: '9999px',
+                            '&:focus': {
+                              borderRadius: '9999px',
+                              backgroundColor: `${stageColor}22`,
+                            },
+                          },
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            border: 'none',
+                          },
+                          '& .MuiSelect-icon': {
+                            color: stageColor,
+                            right: 8,
+                          },
+                          '&:hover .MuiSelect-select': {
+                            backgroundColor: `${stageColor}22`,
+                          },
+                          transition: 'all 0.15s ease',
+                          cursor: isUpdating ? 'wait' : 'pointer',
+                        }}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              borderRadius: '12px',
+                              mt: '4px',
+                              boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                              maxHeight: 280,
+                            },
+                          },
+                          MenuListProps: {
+                            sx: { py: '4px' },
+                          },
+                        }}
+                      >
+                        {pipeline.map((stage) => (
+                          <MenuItem
+                            key={stage.id}
+                            value={stage.name}
+                            sx={{
+                              fontSize: '0.8rem',
+                              fontWeight: casting.status === stage.name ? 600 : 400,
+                              color: stage.color,
+                              gap: 1,
+                              mx: '8px',
+                              my: '2px',
+                              borderRadius: '8px',
+                              '&::before': {
+                                content: '""',
+                                display: 'block',
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                backgroundColor: stage.color,
+                              },
+                              '&:hover': {
+                                backgroundColor: `${stage.color}18`,
+                              },
+                              '&.Mui-selected': {
+                                backgroundColor: `${stage.color}14`,
+                                fontWeight: 600,
+                                '&:hover': {
+                                  backgroundColor: `${stage.color}22`,
+                                },
+                              },
+                            }}
+                          >
+                            {stage.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </td>
+
+                  <td
+                    className="px-4 py-3 text-sm text-slate-600"
+                    onClick={() => !isUpdating && onCastingClick(casting)}
+                  >
+                    {formatDate(casting.shoot_date_start) || '-'}
+                  </td>
+                  <td
+                    className="px-4 py-3"
+                    onClick={() => !isUpdating && onCastingClick(casting)}
+                  >
+                    {casting.budget_min || casting.budget_max ? (
+                      <span className="text-sm font-medium text-slate-900">
+                        {formatCurrency(casting.budget_min)}
+                        {casting.budget_min && casting.budget_max && ' - '}
+                        {formatCurrency(casting.budget_max)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
                     )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      {casting.client_contact && (
+                        <>
+                          <a
+                            href={`tel:+91${casting.client_contact}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </a>
+                          <a
+                            href={`https://wa.me/91${casting.client_contact}?text=Regarding ${casting.project_name || 'your casting'}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-green-600"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -429,7 +599,6 @@ function GridView({
     if (!casting) return
     const oldStatus = casting.status
 
-    // Optimistic update — update local state immediately
     setCastings(prev => prev.map(c =>
       c.id === castingId ? { ...c, status: newStatus } : c
     ))
@@ -439,8 +608,7 @@ function GridView({
 
     try {
       await api.put(`/castings/${castingId}/status`, { status: newStatus })
-    } catch (err) {
-      // Rollback on failure
+    } catch {
       setCastings(prev => prev.map(c =>
         c.id === castingId ? { ...c, status: oldStatus } : c
       ))
@@ -451,99 +619,204 @@ function GridView({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 items-stretch">
       {castings.map((c) => {
         const currentStage = pipeline.find((s) => s.name === c.status)
         const stageColor = currentStage?.color || '#64748b'
+        const isFlashing = flashingId === c.id
+        const isUpdating = updatingId === c.id
 
         return (
           <div
             key={c.id}
             className={cn(
-              'flex flex-col h-full rounded-xl border p-4 transition-all cursor-pointer',
-              flashingId === c.id
-                ? 'border-green-400 ring-2 ring-green-100'
-                : 'border-gray-200 hover:border-gray-300'
+              'flex flex-col rounded-2xl bg-white border transition-all duration-200 cursor-pointer',
+              'hover:shadow-lg hover:-translate-y-0.5 hover:border-slate-300',
+              isFlashing
+                ? 'border-green-400 shadow-green-100 shadow-md'
+                : 'border-slate-200 shadow-sm',
             )}
+            style={{ minHeight: 0 }}
             onClick={() => onCastingClick(c)}
           >
-            {/* Top bar: action buttons only — compact, top-right */}
-            <div className="flex items-center justify-end gap-1 mb-3">
-              {c.client_contact && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      window.open('tel:' + c.client_contact)
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
-                    title="Call"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      window.open('https://wa.me/' + c.client_contact.replace(/\D/g, ''))
-                    }}
-                    className="p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors"
-                    title="WhatsApp"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1">
-              <h3 className="font-bold text-base text-slate-900 mb-1 line-clamp-2 leading-snug">
+            {/* ── ZONE 1: Title + Actions ─────────────────────────────── */}
+            <div className="flex items-start justify-between gap-2 p-5 pb-3">
+              {/* Project title — bold, truncate overflow */}
+              <h3
+                className="flex-1 font-bold text-[15px] text-slate-900 leading-snug line-clamp-2 min-w-0"
+                title={c.project_name || 'Untitled'}
+              >
                 {c.project_name || 'Untitled'}
               </h3>
-              <p className="text-[13px] text-slate-600 truncate">{c.client_name}</p>
+
+              {/* Action icons — top-right, consistent 32px tap targets */}
+              <div className="flex items-center gap-1 shrink-0">
+                {c.client_contact && (
+                  <>
+                    <a
+                      href={'tel:' + c.client_contact}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                      title="Call"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                    </a>
+                    <a
+                      href={'https://wa.me/' + c.client_contact.replace(/\D/g, '')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-colors"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                    </a>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── ZONE 2: Info stack — uniform vertical rhythm ───────── */}
+            <div className="flex-1 px-5 space-y-1 min-w-0">
+              {/* Client name */}
+              <p
+                className="text-[13px] font-medium text-slate-700 truncate"
+                title={c.client_name}
+              >
+                {c.client_name || '-'}
+              </p>
+
+              {/* Phone */}
               {c.client_contact && (
-                <p className="text-[13px] text-slate-500 truncate">{c.client_contact}</p>
+                <p className="text-[12px] text-slate-500 truncate flex items-center gap-1.5">
+                  <Phone className="w-3 h-3 shrink-0 text-slate-400" />
+                  <span className="truncate">{c.client_contact}</span>
+                </p>
               )}
-              {c.client_email && (
-                <p className="text-[13px] text-slate-400 truncate">{c.client_email}</p>
-              )}
+
+              {/* Shoot dates */}
               {c.shoot_date_start && (
-                <p className="text-[13px] text-slate-500 mt-1 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 shrink-0" />
-                  {formatDate(c.shoot_date_start)}
-                  {c.shoot_date_end && c.shoot_date_end !== c.shoot_date_start
-                    ? ` – ${formatDate(c.shoot_date_end)}`
-                    : ''}
+                <p className="text-[12px] text-slate-400 truncate flex items-center gap-1.5">
+                  <Calendar className="w-3 h-3 shrink-0 text-slate-300" />
+                  <span className="truncate">
+                    {formatDate(c.shoot_date_start)}
+                    {c.shoot_date_end && c.shoot_date_end !== c.shoot_date_start
+                      ? ` – ${formatDate(c.shoot_date_end)}`
+                      : ''}
+                  </span>
                 </p>
               )}
             </div>
 
-            {/* Footer: status dropdown (compact) + assigned name */}
-            <div className="mt-auto pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
-              {/* Status dropdown — compact, bottom-left */}
-              <select
-                value={c.status || ''}
-                onChange={(e) => {
-                  e.stopPropagation()
-                  handleStatusChange(c.id, e.target.value)
-                }}
-                disabled={updatingId === c.id}
-                onClick={(e) => e.stopPropagation()}
-                className="text-[11px] font-medium border-0 cursor-pointer bg-transparent focus:outline-none transition-all px-0 py-0 rounded-none"
-                style={{ color: stageColor }}
-                title="Change status"
-              >
-                {pipeline.map((stage) => (
-                  <option key={stage.id} value={stage.name}>
-                    {stage.name}
-                  </option>
-                ))}
-              </select>
+            {/* ── ZONE 3: Footer row ──────────────────────────────────── */}
+            <div
+              className="flex items-center justify-between gap-3 px-5 py-3 mt-2 border-t border-slate-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* MUI Status Select — pill, color-coded */}
+              <FormControl size="small" sx={{ flexShrink: 0 }}>
+                <Select
+                  value={c.status || ''}
+                  onChange={(e) => handleStatusChange(c.id, String(e.target.value))}
+                  disabled={isUpdating}
+                  displayEmpty
+                  IconComponent={
+                    isUpdating
+                      ? () => (
+                          <CircularProgress
+                            size={12}
+                            sx={{ mx: 0.75, color: 'text.secondary', flexShrink: 0 }}
+                          />
+                        )
+                      : undefined
+                  }
+                  sx={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    borderRadius: '9999px',
+                    border: '1px solid',
+                    borderColor: `${stageColor}40`,
+                    minWidth: 100,
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                    '& .MuiSelect-select': {
+                      py: '4px',
+                      pl: '10px',
+                      pr: '28px',
+                      color: stageColor,
+                      backgroundColor: `${stageColor}12`,
+                      borderRadius: '9999px',
+                      '&:focus': {
+                        borderRadius: '9999px',
+                        backgroundColor: `${stageColor}1a`,
+                      },
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                    '& .MuiSelect-icon': { color: stageColor, right: 6 },
+                    '&:hover .MuiSelect-select': {
+                      backgroundColor: `${stageColor}1a`,
+                    },
+                    transition: 'all 0.15s ease',
+                    cursor: isUpdating ? 'wait' : 'pointer',
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        borderRadius: '12px',
+                        mt: '4px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        maxHeight: 280,
+                      },
+                    },
+                    MenuListProps: { sx: { py: '4px' } },
+                  }}
+                >
+                  {pipeline.map((stage) => (
+                    <MenuItem
+                      key={stage.id}
+                      value={stage.name}
+                      sx={{
+                        fontSize: '0.78rem',
+                        fontWeight: c.status === stage.name ? 700 : 400,
+                        color: stage.color,
+                        gap: 1,
+                        mx: '6px',
+                        my: '2px',
+                        borderRadius: '8px',
+                        '&::before': {
+                          content: '""',
+                          display: 'block',
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          backgroundColor: stage.color,
+                          flexShrink: 0,
+                        },
+                        '&:hover': { backgroundColor: `${stage.color}12` },
+                        '&.Mui-selected': {
+                          backgroundColor: `${stage.color}14`,
+                          fontWeight: 700,
+                          '&:hover': { backgroundColor: `${stage.color}1a` },
+                        },
+                      }}
+                    >
+                      {stage.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-              {/* Assigned name — bottom-right */}
-              {c.assigned_names && (
-                <span className="text-[11px] text-slate-400 truncate ml-auto">
-                  {c.assigned_names.split(',')[0]}
+              {/* Assigned team member — right-aligned, truncate */}
+              {c.assigned_names ? (
+                <span
+                  className="text-[11px] text-slate-400 truncate text-right flex-1 min-w-0 ml-1"
+                  title={c.assigned_names}
+                >
+                  {c.assigned_names.split(',')[0].trim()}
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-300 truncate text-right flex-1 min-w-0 ml-1">
+                  Unassigned
                 </span>
               )}
             </div>
