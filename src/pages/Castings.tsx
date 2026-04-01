@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   List,
@@ -32,6 +32,7 @@ import MenuItem from '@mui/material/MenuItem'
 import CircularProgress from '@mui/material/CircularProgress'
 
 export function Castings() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { castingViewMode, setCastingViewMode } = useAppStore()
   const { openOverlay, closeOverlay } = useOverlay()
@@ -78,16 +79,38 @@ export function Castings() {
     fetchPipeline()
   }, [fetchCastings, fetchPipeline])
 
-  // Check for new casting param — open modal when ?new=true is present.
-  // Deps: [searchParams] so it re-fires if param changes (e.g. FAB navigation from within Castings).
-  // Guard: only fires when modal is closed (avoids re-setting state if modal already open).
+  // Ref: ensures the ?new=true handler fires at most ONCE per mount.
+  // Without this, opening the modal changes modalOpen and the effect re-runs —
+  // even though the guard prevents re-opening, the URL still has ?new=true,
+  // and when the modal closes (modalOpen → false) the effect fires again and
+  // re-opens the modal immediately (infinite loop).
+  const hasOpenedRef = useRef(false)
+
+  // Handle ?new=true URL param — opens the new-casting modal.
+  //
+  // Key invariants:
+  // 1. hasOpenedRef guard: effect fires at most once per mount, even when
+  //    modalOpen changes (setState is async, effect sees stale !modalOpen value).
+  // 2. navigate(..., { replace: true }) clears ?new=true immediately so any
+  //    subsequent effect run (after state settles) sees no param — no loop.
+  // 3. Both entry points (FAB navigation + direct URL) follow the same path.
+  // 4. Browser back while modal is open: overlay manager handles it (popstate
+  //    fires, overlay closes). The URL is already /castings (no ?new=true) so
+  //    remounting does not re-trigger the modal.
+  // 5. Refresh with ?new=true: hasOpenedRef is fresh, modal opens once, URL cleared.
   useEffect(() => {
-    if (searchParams.get('new') === 'true' && !modalOpen) {
-      setSelectedCasting(null)
-      setModalOpen(true)
-    }
+    if (searchParams.get('new') !== 'true') return
+    if (hasOpenedRef.current) return
+    hasOpenedRef.current = true
+    setSelectedCasting(null)
+    setModalOpen(true)
+    // Clear the URL immediately so subsequent effect runs (after state settles)
+    // do not see ?new=true and do not re-enter this handler.
+    navigate('/castings', { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, modalOpen])
+  }, [searchParams]) // NOTE: intentionally omit hasOpenedRef and navigate — both are
+  // stable or set before state; adding them would cause unnecessary re-runs.
+  // modalOpen is intentionally NOT in deps — state changes do not re-trigger the handler.
 
   // Register CastingModal with overlay manager
   useEffect(() => {
@@ -228,12 +251,10 @@ export function Castings() {
             )}
           </button>
 
-          {/* New Casting */}
+          {/* New Casting — same ?new=true entry as the FAB so both entry points
+              are handled by the same guarded effect and back-button works uniformly. */}
           <button
-            onClick={() => {
-              setSelectedCasting(null)
-              setModalOpen(true)
-            }}
+            onClick={() => navigate('/castings?new=true')}
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
