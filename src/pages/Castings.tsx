@@ -82,49 +82,29 @@ export function Castings() {
     fetchPipeline()
   }, [fetchCastings, fetchPipeline])
 
-  // Ref: ensures the ?new=true handler fires at most ONCE per mount.
-  // Without this, opening the modal changes modalOpen and the effect re-runs —
-  // even though the guard prevents re-opening, the URL still has ?new=true,
-  // and when the modal closes (modalOpen → false) the effect fires again and
-  // re-opens the modal immediately (infinite loop).
-  const hasOpenedRef = useRef(false)
-
-  // Handle ?new=true URL param — opens the new-casting modal.
-  //
-  // Key invariants:
-  // 1. hasOpenedRef guard: effect fires at most once per mount, even when
-  //    modalOpen changes (setState is async, effect sees stale !modalOpen value).
-  // 2. navigate(..., { replace: true }) clears ?new=true immediately so any
-  //    subsequent effect run (after state settles) sees no param — no loop.
-  // 3. Both entry points (FAB navigation + direct URL) follow the same path.
-  // 4. Browser back while modal is open: overlay manager handles it (popstate
-  //    fires, overlay closes). The URL is already /castings (no ?new=true) so
-  //    remounting does not re-trigger the modal.
-  // 5. Refresh with ?new=true: hasOpenedRef is fresh, modal opens once, URL cleared.
-  useEffect(() => {
-    if (searchParams.get('new') !== 'true') return
-    if (hasOpenedRef.current) return
-    hasOpenedRef.current = true
-    setSelectedCasting(null)
-    setModalOpen(true)
-    // Clear the URL immediately so subsequent effect runs (after state settles)
-    // do not see ?new=true and do not re-enter this handler.
-    navigate('/castings', { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]) // NOTE: intentionally omit hasOpenedRef and navigate — both are
-  // stable or set before state; adding them would cause unnecessary re-runs.
-  // modalOpen is intentionally NOT in deps — state changes do not re-trigger the handler.
-
   // Register CastingModal with overlay manager
   useEffect(() => {
     if (modalOpen) {
-      modalClosedRef.current = false // clear explicit-close flag on open
+      modalClosedRef.current = false
       openOverlay('casting-modal', () => setModalOpen(false))
     } else {
-      modalClosedRef.current = true // mark as explicitly closed
+      modalClosedRef.current = true
       closeOverlay('casting-modal')
     }
   }, [modalOpen, openOverlay, closeOverlay])
+
+  // Handle ?new=true URL param — opens the new-casting modal.
+  // Uses modalOpen (not a ref) as the guard so the check is always fresh.
+  // modalOpen is intentionally NOT in deps — we WANT the effect to re-check
+  // modalOpen's current value every time searchParams change.
+  useEffect(() => {
+    if (searchParams.get('new') !== 'true') return
+    if (modalOpen) return // already open — don't re-enter
+    setSelectedCasting(null)
+    setModalOpen(true)
+    navigate('/castings', { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   // Register CastingDetailModal with overlay manager
   useEffect(() => {
