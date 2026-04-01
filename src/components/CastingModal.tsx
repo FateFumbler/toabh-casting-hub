@@ -26,7 +26,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
   const [customFields, setCustomFields] = useState<any[]>([])
   const [teamError, setTeamError] = useState('')
   const [showClientModal, setShowClientModal] = useState(false)
-  const [newClient, setNewClient] = useState({ name: '', phone: '', email: '' })
+  const [newClient, setNewClient] = useState({ name: '', phone: '', email: '', company: '' })
   const [creatingClient, setCreatingClient] = useState(false)
 
   const [form, setForm] = useState({
@@ -140,7 +140,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
   const handleClientChange = (name: string) => {
     if (name === '__add_new__') {
       setShowClientModal(true)
-      setNewClient({ name: '', phone: '', email: '' })
+      setNewClient({ name: '', phone: '', email: '', company: '' })
       return
     }
     const client = clients.find((c) => c.name === name)
@@ -162,7 +162,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
         name: newClient.name.trim(),
         phone: newClient.phone.trim(),
         email: newClient.email.trim(),
-        company: '',
+        company: newClient.company.trim(),
       })
       setClients((prev) => [...prev, created])
       setForm({
@@ -799,6 +799,16 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                         onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
                         className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                         placeholder="client@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+                      <input
+                        type="text"
+                        value={newClient.company}
+                        onChange={(e) => setNewClient({ ...newClient, company: e.target.value })}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        placeholder="Company name (optional)"
                       />
                     </div>
                   </div>
