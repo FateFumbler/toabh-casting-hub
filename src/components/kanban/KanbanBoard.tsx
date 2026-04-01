@@ -65,29 +65,39 @@ export function KanbanBoard({
     if (!over) return
     if (updatingRef.current) return
 
-    const castingId = Number(active.id)
+    const draggingId = Number(active.id)
     const overId = String(over.id)
 
-    const casting = castings.find((c) => c.id === castingId)
-    if (!casting) return
+    const dragging = castings.find((c) => c.id === draggingId)
+    if (!dragging) return
 
-    const newStage = overId
-    const currentStage = resolveStage(casting)
+    // Determine target stage: over can be a column (stage name) or a card (card id)
+    let targetStage: string
+    // Check if over is a column (stage name matches a pipeline stage name)
+    if (pipeline.some(s => s.name === overId)) {
+      targetStage = overId
+    } else {
+      // Dropped on a card — look up that card's stage
+      const overCard = castings.find(c => String(c.id) === overId)
+      targetStage = overCard ? resolveStage(overCard) : resolveStage(dragging)
+    }
+
+    const currentStage = resolveStage(dragging)
 
     // No-op if dropped in same column
-    if (newStage === currentStage) return
+    if (targetStage === currentStage) return
 
     // Optimistic update — immediately move card in local state
     updatingRef.current = true
     onCastingsChange?.(
       castings.map((c) =>
-        c.id === castingId ? { ...c, pipeline_stage: newStage, status: newStage } : c
+        c.id === draggingId ? { ...c, pipeline_stage: targetStage, status: targetStage } : c
       )
     )
 
     try {
-      await api.put(`/castings/${castingId}`, { pipeline_stage: newStage })
-      toast.success(`Moved to ${newStage}`)
+      await api.put(`/castings/${draggingId}`, { pipeline_stage: targetStage })
+      toast.success(`Moved to ${targetStage}`)
     } catch (err) {
       // Rollback on failure
       onCastingsChange?.(castings)

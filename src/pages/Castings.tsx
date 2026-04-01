@@ -19,6 +19,7 @@ import {
 import { api } from '@/lib/api'
 import { cn, formatDate, formatCurrency, getInitials } from '@/lib/utils'
 import { useAppStore } from '@/hooks/useStore'
+import { toast } from 'sonner'
 import { CastingModal } from '@/components/CastingModal'
 import { CastingDetailModal } from '@/components/CastingDetailModal'
 import { AdvancedFilters } from '@/components/AdvancedFilters'
@@ -237,6 +238,7 @@ export function Castings() {
       ) : castingViewMode === 'grid' ? (
         <GridView
           castings={filteredCastings}
+          setCastings={setCastings}
           pipeline={pipeline}
           onCastingClick={(c) => {
             setSelectedCasting(c)
@@ -246,6 +248,7 @@ export function Castings() {
       ) : (
         <ListView
           castings={filteredCastings}
+          setCastings={setCastings}
           sortConfig={sortConfig}
           onSort={handleSort}
           onCastingClick={(c) => {
@@ -288,11 +291,13 @@ export function Castings() {
 
 function ListView({
   castings,
+  setCastings: _setCastings,
   sortConfig,
   onSort,
   onCastingClick,
 }: {
   castings: Casting[]
+  setCastings: React.Dispatch<React.SetStateAction<Casting[]>>
   sortConfig: { key: string; direction: 'asc' | 'desc' }
   onSort: (key: string) => void
   onCastingClick: (c: Casting) => void
@@ -407,24 +412,39 @@ function ListView({
 
 function GridView({
   castings,
+  setCastings,
   pipeline,
   onCastingClick,
 }: {
   castings: Casting[]
+  setCastings: React.Dispatch<React.SetStateAction<Casting[]>>
   pipeline: PipelineStage[]
   onCastingClick: (c: Casting) => void
 }) {
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [flashingId, setFlashingId] = useState<number | null>(null)
 
-  const handlePipelineStageChange = async (castingId: number, newStageName: string) => {
+  const handleStatusChange = async (castingId: number, newStatus: string) => {
+    const casting = castings.find(c => c.id === castingId)
+    if (!casting) return
+    const oldStatus = casting.status
+
+    // Optimistic update — update local state immediately
+    setCastings(prev => prev.map(c =>
+      c.id === castingId ? { ...c, status: newStatus } : c
+    ))
     setUpdatingId(castingId)
+    setFlashingId(castingId)
+    setTimeout(() => setFlashingId(null), 1000)
+
     try {
-      await api.put(`/castings/${castingId}/status`, { status: newStageName })
-      setFlashingId(castingId)
-      setTimeout(() => setFlashingId(null), 1000)
+      await api.put(`/castings/${castingId}/status`, { status: newStatus })
     } catch (err) {
-      console.error('Failed to update pipeline stage:', err)
+      // Rollback on failure
+      setCastings(prev => prev.map(c =>
+        c.id === castingId ? { ...c, status: oldStatus } : c
+      ))
+      toast.error('Failed to update status')
     } finally {
       setUpdatingId(null)
     }
@@ -505,7 +525,7 @@ function GridView({
                 value={c.status || ''}
                 onChange={(e) => {
                   e.stopPropagation()
-                  handlePipelineStageChange(c.id, e.target.value)
+                  handleStatusChange(c.id, e.target.value)
                 }}
                 disabled={updatingId === c.id}
                 onClick={(e) => e.stopPropagation()}
