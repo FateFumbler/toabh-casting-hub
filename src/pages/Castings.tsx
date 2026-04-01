@@ -23,22 +23,7 @@ import { CastingModal } from '@/components/CastingModal'
 import { CastingDetailModal } from '@/components/CastingDetailModal'
 import { AdvancedFilters } from '@/components/AdvancedFilters'
 import type { Casting, PipelineStage } from '@/types'
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCorners,
-  type DragEndEvent,
-  type DragStartEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { KanbanBoard } from '@/components/kanban'
 
 const statusColors: { [key: string]: string } = {
   NEW: 'bg-blue-100 text-blue-700',
@@ -64,11 +49,6 @@ export function Castings() {
     key: 'created_at',
     direction: 'desc',
   })
-  const [activeId, setActiveId] = useState<string | null>(null)
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  )
 
   const fetchCastings = useCallback(async () => {
     try {
@@ -147,31 +127,6 @@ export function Castings() {
         ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' }
         : { key, direction: 'asc' }
     )
-  }
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over) return
-
-    const castingId = Number(active.id)
-    const newStatus = over.id as string
-
-    const casting = castings.find((c) => c.id === castingId)
-    if (casting && casting.status !== newStatus) {
-      try {
-        await api.put(`/castings/${castingId}`, { status: newStatus })
-        setCastings((prev) =>
-          prev.map((c) => (c.id === castingId ? { ...c, status: newStatus } : c))
-        )
-      } catch (err) {
-        console.error('Failed to update status:', err)
-      }
-    }
-    setActiveId(null)
-  }
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(String(event.active.id))
   }
 
   return (
@@ -270,17 +225,14 @@ export function Castings() {
           <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
         </div>
       ) : castingViewMode === 'kanban' ? (
-        <KanbanView
+        <KanbanBoard
           castings={filteredCastings}
           pipeline={pipeline}
           onCastingClick={(c) => {
             setSelectedCasting(c)
             setDetailModalOpen(true)
           }}
-          sensors={sensors}
-          handleDragEnd={handleDragEnd}
-          handleDragStart={handleDragStart}
-          activeId={activeId}
+          onCastingsChange={setCastings}
         />
       ) : castingViewMode === 'grid' ? (
         <GridView
@@ -582,138 +534,3 @@ function GridView({
   )
 }
 
-function SortableCard({
-  casting,
-  onClick,
-}: {
-  casting: Casting
-  onClick: () => void
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: String(casting.id) })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={onClick}
-      className={cn(
-        'card p-3 cursor-grab active:cursor-grabbing hover:shadow-lg transition-all',
-        isDragging && 'opacity-50 shadow-lg'
-      )}
-    >
-      <div className="flex items-start gap-2 mb-2">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-[10px] font-medium flex-shrink-0">
-          {getInitials(casting.client_name)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-slate-900 text-sm truncate">
-            {casting.project_name || 'Untitled'}
-          </p>
-          <p className="text-xs text-slate-500 truncate">{casting.client_name}</p>
-        </div>
-      </div>
-      {casting.shoot_date_start && (
-        <p className="text-xs text-slate-400">{formatDate(casting.shoot_date_start)}</p>
-      )}
-    </div>
-  )
-}
-
-function KanbanView({
-  castings,
-  pipeline,
-  onCastingClick,
-  sensors,
-  handleDragEnd,
-  handleDragStart,
-  activeId,
-}: {
-  castings: Casting[]
-  pipeline: PipelineStage[]
-  onCastingClick: (c: Casting) => void
-  sensors: any
-  handleDragEnd: (e: DragEndEvent) => void
-  handleDragStart: (e: DragStartEvent) => void
-  activeId: string | null
-}) {
-  const activeCasting = castings.find((c) => String(c.id) === activeId)
-
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {pipeline.map((stage) => {
-          const stageCastings = castings.filter((c) => c.status === stage.name)
-          return (
-            <div
-              key={stage.id}
-              id={stage.name}
-              className="flex-shrink-0 w-72"
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: stage.color }}
-                />
-                <h3 className="font-semibold text-slate-900">{stage.name}</h3>
-                <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                  {stageCastings.length}
-                </span>
-              </div>
-              <SortableContext
-                items={stageCastings.map((c) => String(c.id))}
-                strategy={horizontalListSortingStrategy}
-                id={stage.name}
-              >
-                <div className="space-y-2 min-h-[200px] p-2 bg-slate-50/50 rounded-xl">
-                  {stageCastings.map((casting) => (
-                    <SortableCard
-                      key={casting.id}
-                      casting={casting}
-                      onClick={() => onCastingClick(casting)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </div>
-          )
-        })}
-      </div>
-      <DragOverlay>
-        {activeCasting && (
-          <div className="card p-3 shadow-xl opacity-90">
-            <div className="flex items-start gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-[10px] font-medium">
-                {getInitials(activeCasting.client_name)}
-              </div>
-              <div>
-                <p className="font-medium text-slate-900 text-sm">
-                  {activeCasting.project_name || 'Untitled'}
-                </p>
-                <p className="text-xs text-slate-500">{activeCasting.client_name}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </DragOverlay>
-    </DndContext>
-  )
-}
