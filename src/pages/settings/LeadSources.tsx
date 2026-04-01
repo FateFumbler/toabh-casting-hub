@@ -28,9 +28,10 @@ export function LeadSources() {
 
   const fetchSources = useCallback(async () => {
     try {
-      const data: LeadSource[] = await api.get('/settings/sources')
+      const data = await api.get('/settings/sources')
+      const safeData: LeadSource[] = Array.isArray(data) ? data : []
       const map = new Map<number, SourceState>()
-      data.forEach(s => {
+      safeData.forEach(s => {
         map.set(s.id, {
           ...s,
           isEditing: false,

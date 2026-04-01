@@ -16,9 +16,10 @@ export function TeamManagement() {
   const fetchTeam = async () => {
     try {
       const data = await api.get('/team')
-      setTeam(data)
+      setTeam(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch:', err)
+      setTeam([])
     } finally {
       setLoading(false)
     }

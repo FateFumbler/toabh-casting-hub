@@ -38,6 +38,7 @@ export function DashboardSettings() {
   useEffect(() => {
     api.get('/settings/dashboard-modules')
       .then((data: any) => {
+        if (!data || typeof data !== 'object') return
         // Backend returns flat key:value like {kanban: true, calendar: true, default_view: 'kanban', ...}
         const saved: Record<string, boolean> = {}
         for (const key of Object.keys(defaultModulesState)) {

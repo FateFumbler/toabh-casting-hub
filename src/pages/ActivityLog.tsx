@@ -51,13 +51,14 @@ export function ActivityLog() {
       params.append('limit', '20')
 
       const data = await api.get(`/activities?${params.toString()}`)
+      const safeData = Array.isArray(data) ? data : []
       if (reset) {
-        setActivities(data)
+        setActivities(safeData)
         setPage(1)
       } else {
-        setActivities((prev) => [...prev, ...data])
+        setActivities((prev) => [...prev, ...safeData])
       }
-      setHasMore(data.length === 20)
+      setHasMore(safeData.length === 20)
     } catch (err) {
       console.error('Failed to fetch:', err)
     } finally {
@@ -68,9 +69,10 @@ export function ActivityLog() {
   const fetchTeam = async () => {
     try {
       const data = await api.get('/team')
-      setTeam(data)
+      setTeam(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch team:', err)
+      setTeam([])
     }
   }
 

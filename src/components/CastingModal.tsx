@@ -57,7 +57,14 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
       setActiveTab('Overview')
       fetchData()
       if (casting) {
-        const customFieldsData = casting.custom_fields ? JSON.parse(casting.custom_fields) : {}
+        let customFieldsData: { [key: string]: string } = {}
+        if (casting.custom_fields) {
+          try {
+            customFieldsData = JSON.parse(casting.custom_fields)
+          } catch {
+            customFieldsData = {}
+          }
+        }
         let assignedToIds: number[] = []
         if (casting.assigned_ids) {
           if (typeof casting.assigned_ids === 'string') {
@@ -236,9 +243,10 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
   }, [onClose])
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="sync">
       {open && (
         <motion.div
+          key="casting-modal"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

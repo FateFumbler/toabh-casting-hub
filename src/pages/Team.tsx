@@ -15,9 +15,10 @@ export function Team() {
   const fetchTeam = async () => {
     try {
       const data = await api.get('/team')
-      setTeam(data)
+      setTeam(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch team:', err)
+      setTeam([])
     } finally {
       setLoading(false)
     }
@@ -26,9 +27,10 @@ export function Team() {
   const fetchCastings = async () => {
     try {
       const data = await api.get('/castings')
-      setCastings(data)
+      setCastings(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch castings:', err)
+      setCastings([])
     }
   }
 

@@ -10,6 +10,7 @@ import { Team } from './pages/Team'
 import { ActivityLog } from './pages/ActivityLog'
 import { Reports } from './pages/Reports'
 import { Settings } from './pages/Settings'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,29 +32,87 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/castings" element={<Castings />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/team" element={<Team />} />
-            <Route path="/activity" element={<ActivityLog />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-          </Route>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route
+                path="/dashboard"
+                element={
+                  <ErrorBoundary>
+                    <Dashboard />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/castings"
+                element={
+                  <ErrorBoundary>
+                    <Castings />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/clients"
+                element={
+                  <ErrorBoundary>
+                    <Clients />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/calendar"
+                element={
+                  <ErrorBoundary>
+                    <Calendar />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/team"
+                element={
+                  <ErrorBoundary>
+                    <Team />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/activity"
+                element={
+                  <ErrorBoundary>
+                    <ActivityLog />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/reports"
+                element={
+                  <ErrorBoundary>
+                    <Reports />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ErrorBoundary>
+                    <Settings />
+                  </ErrorBoundary>
+                }
+              />
+            </Route>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ErrorBoundary>
     </QueryClientProvider>
   )
 }

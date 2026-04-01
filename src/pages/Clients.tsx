@@ -17,9 +17,10 @@ export function Clients() {
   const fetchClients = async () => {
     try {
       const data = await api.get('/clients')
-      setClients(data)
+      setClients(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch clients:', err)
+      setClients([])
     } finally {
       setLoading(false)
     }
@@ -28,9 +29,10 @@ export function Clients() {
   const fetchCastings = async () => {
     try {
       const data = await api.get('/castings')
-      setCastings(data)
+      setCastings(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch castings:', err)
+      setCastings([])
     }
   }
 

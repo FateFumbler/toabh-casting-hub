@@ -48,11 +48,12 @@ export function CustomFields() {
   const fetchFields = async () => {
     try {
       const data = await api.get('/settings/custom-fields')
-      setFields(data)
+      setFields(Array.isArray(data) ? data : [])
       setError(null)
     } catch (err) {
       console.error('Failed to fetch:', err)
       setError('Failed to load custom fields')
+      setFields([])
     } finally {
       setLoading(false)
     }

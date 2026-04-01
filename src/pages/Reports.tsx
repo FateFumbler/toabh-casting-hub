@@ -19,9 +19,10 @@ export function Reports() {
   const fetchCastings = async () => {
     try {
       const data = await api.get('/castings')
-      setCastings(data)
+      setCastings(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch:', err)
+      setCastings([])
     } finally {
       setLoading(false)
     }

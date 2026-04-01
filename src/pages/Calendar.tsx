@@ -35,10 +35,12 @@ export function Calendar() {
         api.get('/castings'),
         api.get('/settings/pipeline'),
       ])
-      setCastings(castingsData)
-      setPipeline(pipelineData)
+      setCastings(Array.isArray(castingsData) ? castingsData : [])
+      setPipeline(Array.isArray(pipelineData) ? pipelineData : [])
     } catch (err) {
       console.error('Failed to fetch:', err)
+      setCastings([])
+      setPipeline([])
     } finally {
       setLoading(false)
     }
