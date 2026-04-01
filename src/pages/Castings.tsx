@@ -71,7 +71,7 @@ export function Castings() {
   const fetchCastings = useCallback(async () => {
     try {
       const data = await api.get('/castings')
-      setCastings(data)
+      setCastings(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch castings:', err)
     } finally {
@@ -82,7 +82,7 @@ export function Castings() {
   const fetchPipeline = useCallback(async () => {
     try {
       const data = await api.get('/settings/pipeline')
-      setPipeline(data)
+      setPipeline(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error('Failed to fetch pipeline:', err)
     }
