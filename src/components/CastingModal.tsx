@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Phone, MessageCircle, Loader2, AlertCircle, Check } from 'lucide-react'
+import { X, Loader2, AlertCircle, Check } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn, getInitials } from '@/lib/utils'
 import type { Casting, Client, TeamMember, PipelineStage, LeadSource } from '@/types'
@@ -263,8 +263,8 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
             className="relative w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-              <h2 className="text-lg font-semibold text-slate-900">
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-200 bg-slate-50">
+              <h2 className="text-base sm:text-lg font-semibold text-slate-900">
                 {casting ? 'Edit Casting' : 'New Casting'}
               </h2>
               <button
@@ -276,7 +276,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 px-6 py-2 border-b border-slate-200 bg-slate-50/50">
+            <div className="flex gap-1 px-4 py-1.5 sm:px-6 sm:py-2 border-b border-slate-200 bg-slate-50/50">
               {TABS.map((tab) => (
                 <button
                   key={tab}
@@ -294,7 +294,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
@@ -303,11 +303,11 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                 <form onSubmit={handleSubmit} id="casting-form" noValidate>
                   {/* ======= OVERVIEW TAB ======= */}
                   {activeTab === 'Overview' && (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
 
                       {/* Project Title — MANDATORY, FIRST */}
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                           Project Title <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -320,7 +320,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                             }
                           }}
                           className={cn(
-                            'w-full px-3 py-2 border rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50',
+                            'w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50',
                             validationErrors.project_name ? 'border-red-400 bg-red-50/30' : 'border-slate-200'
                           )}
                           placeholder="Project name"
@@ -335,7 +335,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
 
                       {/* Client — MANDATORY, SECOND */}
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                           Client <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -345,7 +345,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                             setValidationErrors((v) => ({ ...v, client: undefined }))
                           }}
                           className={cn(
-                            'w-full px-3 py-2 border rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50',
+                            'w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 truncate',
                             validationErrors.client ? 'border-red-400 bg-red-50/30' : 'border-slate-200'
                           )}
                         >
@@ -369,34 +369,34 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
 
                       {/* Client Details — auto-populated */}
                       {form.client_name && form.client_name !== '__add_new__' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-50 rounded-xl border border-slate-200">
                           <div>
-                            <label className="block text-xs font-medium text-slate-500 mb-1">Phone</label>
+                            <label className="block text-[11px] sm:text-xs font-medium text-slate-500 mb-0.5 sm:mb-1">Phone</label>
                             <input
                               type="text"
                               value={form.client_contact}
                               onChange={(e) => setForm({ ...form, client_contact: e.target.value })}
-                              className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                              className="w-full px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                               placeholder="Phone"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                            <label className="block text-[11px] sm:text-xs font-medium text-slate-500 mb-0.5 sm:mb-1">Email</label>
                             <input
                               type="email"
                               value={form.client_email}
                               onChange={(e) => setForm({ ...form, client_email: e.target.value })}
-                              className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                              className="w-full px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 truncate"
                               placeholder="Email"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-slate-500 mb-1">Company</label>
+                            <label className="block text-[11px] sm:text-xs font-medium text-slate-500 mb-0.5 sm:mb-1">Company</label>
                             <input
                               type="text"
                               value={form.client_company}
                               onChange={(e) => setForm({ ...form, client_company: e.target.value })}
-                              className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                              className="w-full px-2 py-1 sm:px-2.5 sm:py-1.5 text-[11px] sm:text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/50 truncate"
                               placeholder="Company"
                             />
                           </div>
@@ -405,68 +405,68 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
 
                       {/* Description */}
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                          Description <span className="text-slate-400 font-normal">(Notes merged here)</span>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
+                          Description
                         </label>
                         <textarea
                           value={form.description}
                           onChange={(e) => setForm({ ...form, description: e.target.value })}
                           rows={3}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none"
                           placeholder="Requirements, notes, reference links..."
                         />
                       </div>
 
                       {/* Dates */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                             Shoot Date
                           </label>
                           <input
                             type="date"
                             value={form.shoot_date_start}
                             onChange={(e) => setForm({ ...form, shoot_date_start: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                             End Date
                           </label>
                           <input
                             type="date"
                             value={form.shoot_date_end}
                             onChange={(e) => setForm({ ...form, shoot_date_end: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                           />
                         </div>
                       </div>
 
                       {/* Location */}
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                           Location
                         </label>
                         <input
                           type="text"
                           value={form.location}
                           onChange={(e) => setForm({ ...form, location: e.target.value })}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                          className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                           placeholder="Location"
                         />
                       </div>
 
                       {/* Status + Source */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                             Status
                           </label>
                           <select
                             value={form.status}
                             onChange={(e) => setForm({ ...form, status: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 truncate"
                           >
                             {pipeline.map((stage) => (
                               <option key={stage.id} value={stage.name}>
@@ -476,13 +476,13 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                             Lead Source
                           </label>
                           <select
                             value={form.source}
                             onChange={(e) => setForm({ ...form, source: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 truncate"
                           >
                             <option value="">Select source</option>
                             {sources.map((source) => (
@@ -494,40 +494,16 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                         </div>
                       </div>
 
-                      {/* Call / WhatsApp quick links */}
-                      {form.client_contact && (
-                        <div className="flex gap-2">
-                          <a
-                            href={`tel:${form.client_contact.startsWith('+') ? form.client_contact : '+91' + form.client_contact}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl text-slate-700 hover:bg-slate-200 transition-colors text-sm"
-                          >
-                            <Phone className="w-4 h-4" />
-                            Call
-                          </a>
-                          <a
-                            href={`https://wa.me/${form.client_contact.replace(/\D/g, '')}?text=Regarding ${form.project_name || 'your casting'}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-100 rounded-xl text-green-700 hover:bg-green-200 transition-colors text-sm"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            WhatsApp
-                          </a>
-                        </div>
-                      )}
-
                       {/* ======= DYNAMIC CUSTOM FIELDS ======= */}
                       {customFields.length > 0 && (
-                        <div className="border-t border-slate-200 pt-4 mt-2">
-                          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">
+                        <div className="border-t border-slate-200 pt-3 sm:pt-4 mt-2">
+                          <p className="text-[11px] sm:text-xs font-medium text-slate-400 uppercase tracking-wide mb-2 sm:mb-3">
                             Additional Information
                           </p>
-                          <div className="space-y-4">
+                          <div className="space-y-3 sm:space-y-4">
                             {customFields.map((field) => (
                               <div key={field.id}>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                                   {field.name}
                                 </label>
                                 {field.type === 'text' && (
@@ -538,7 +514,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                       ...form,
                                       custom_fields: { ...form.custom_fields, [field.id]: e.target.value }
                                     })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                                    className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                                     placeholder={`Enter ${field.name.toLowerCase()}`}
                                   />
                                 )}
@@ -550,7 +526,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                       ...form,
                                       custom_fields: { ...form.custom_fields, [field.id]: e.target.value }
                                     })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                                    className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                                     placeholder={`Enter ${field.name.toLowerCase()}`}
                                   />
                                 )}
@@ -562,7 +538,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                       ...form,
                                       custom_fields: { ...form.custom_fields, [field.id]: e.target.value }
                                     })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                                    className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                                   />
                                 )}
                                 {field.type === 'dropdown' && (
@@ -572,7 +548,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                       ...form,
                                       custom_fields: { ...form.custom_fields, [field.id]: e.target.value }
                                     })}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                                    className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50 truncate"
                                   >
                                     <option value="">Select...</option>
                                     {(Array.isArray(field.options) ? field.options : (field.options || '').split(',')).map((opt: string, i: number) => (
@@ -590,9 +566,9 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
 
                   {/* ======= TEAM TAB ======= */}
                   {activeTab === 'Team' && (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {teamError && (
-                        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                        <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs sm:text-sm">
                           <AlertCircle className="w-4 h-4 shrink-0" />
                           {teamError}
                         </div>
@@ -601,22 +577,22 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                       {/* Assigned members pills */}
                       {form.assigned_to.length > 0 && (
                         <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">
+                          <label className="block text-[11px] sm:text-xs font-medium text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wide">
                             Assigned ({form.assigned_to.length})
                           </label>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2">
                             {form.assigned_to.map((memberId) => {
                               const member = teamMembers.find((m) => m.id === memberId)
                               if (!member) return null
                               return (
                                 <div
                                   key={memberId}
-                                  className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 rounded-full border border-amber-200"
+                                  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-amber-50 rounded-full border border-amber-200"
                                 >
-                                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs font-medium">
+                                  <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-[10px] sm:text-xs font-medium">
                                     {getInitials(member.name)}
                                   </div>
-                                  <span className="text-sm text-slate-700">{member.name}</span>
+                                  <span className="text-xs sm:text-sm text-slate-700 truncate max-w-[100px] sm:max-w-none">{member.name}</span>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -628,7 +604,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                     }}
                                     className="p-0.5 rounded-full hover:bg-amber-200 transition-colors"
                                   >
-                                    <X className="w-3.5 h-3.5 text-slate-500" />
+                                    <X className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-500" />
                                   </button>
                                 </div>
                               )
@@ -638,15 +614,15 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                       )}
 
                       <div>
-                        <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">
+                        <label className="block text-[11px] sm:text-xs font-medium text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wide">
                           Select Team Members <span className="text-red-500">*</span>
                         </label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
                           {teamMembers.map((member) => (
                             <label
                               key={member.id}
                               className={cn(
-                                'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors',
+                                'flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border cursor-pointer transition-colors',
                                 form.assigned_to.includes(member.id)
                                   ? 'border-amber-500 bg-amber-500/5'
                                   : 'border-slate-200 hover:bg-slate-50'
@@ -671,15 +647,15 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                                 }}
                                 className="sr-only"
                               />
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-sm font-medium shrink-0">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white text-xs sm:text-sm font-medium shrink-0">
                                 {getInitials(member.name)}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-slate-900 text-sm truncate">{member.name}</p>
-                                <p className="text-xs text-slate-500 truncate">{member.role}</p>
+                                <p className="font-medium text-slate-900 text-xs sm:text-sm truncate">{member.name}</p>
+                                <p className="text-[10px] sm:text-xs text-slate-500 truncate">{member.role}</p>
                               </div>
                               {form.assigned_to.includes(member.id) && (
-                                <Check className="w-4 h-4 text-amber-500 shrink-0" />
+                                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
                               )}
                             </label>
                           ))}
@@ -690,30 +666,30 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
 
                   {/* ======= BUDGET TAB — Optional, no validation ======= */}
                   {activeTab === 'Budget' && (
-                    <div className="space-y-4">
-                      <p className="text-sm text-slate-500">Budget is optional. Leave blank if not applicable.</p>
-                      <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3 sm:space-y-4">
+                      <p className="text-xs sm:text-sm text-slate-500">Budget is optional. Leave blank if not applicable.</p>
+                      <div className="grid grid-cols-2 gap-2 sm:gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                             Budget Min (₹)
                           </label>
                           <input
                             type="number"
                             value={form.budget_min}
                             onChange={(e) => setForm({ ...form, budget_min: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                             placeholder="0"
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">
                             Budget Max (₹)
                           </label>
                           <input
                             type="number"
                             value={form.budget_max}
                             onChange={(e) => setForm({ ...form, budget_max: e.target.value })}
-                            className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                            className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-xl bg-white/50 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                             placeholder="0"
                           />
                         </div>
@@ -725,7 +701,7 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-end gap-2 sm:gap-3 px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-200 bg-slate-50">
               <button
                 type="button"
                 onClick={onClose}
@@ -760,8 +736,8 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                   exit={{ scale: 0.95, opacity: 0 }}
                   className="w-full max-w-sm bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50">
-                    <h3 className="font-semibold text-slate-900 text-sm">Add New Client</h3>
+                  <div className="flex items-center justify-between px-4 py-2.5 sm:px-5 sm:py-3 border-b border-slate-200 bg-slate-50">
+                    <h3 className="font-semibold text-slate-900 text-xs sm:text-sm">Add New Client</h3>
                     <button
                       onClick={() => setShowClientModal(false)}
                       className="p-1 rounded hover:bg-slate-200 transition-colors"
@@ -769,50 +745,50 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
                       <X className="w-4 h-4 text-slate-500" />
                     </button>
                   </div>
-                  <div className="p-5 space-y-4">
+                  <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Name <span className="text-red-500">*</span></label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Name <span className="text-red-500">*</span></label>
                       <input
                         type="text"
                         value={newClient.name}
                         onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                         placeholder="Client name"
                         autoFocus
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Phone</label>
                       <input
                         type="text"
                         value={newClient.phone}
                         onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                         placeholder="+91 ..."
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Email</label>
                       <input
                         type="email"
                         value={newClient.email}
                         onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                         placeholder="client@email.com"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Company</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Company</label>
                       <input
                         type="text"
                         value={newClient.company}
                         onChange={(e) => setNewClient({ ...newClient, company: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                        className="w-full px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50"
                         placeholder="Company name (optional)"
                       />
                     </div>
                   </div>
-                  <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 bg-slate-50">
+                  <div className="flex items-center justify-end gap-2 px-4 py-2.5 sm:px-5 sm:py-3 border-t border-slate-200 bg-slate-50">
                     <button
                       type="button"
                       onClick={() => setShowClientModal(false)}
