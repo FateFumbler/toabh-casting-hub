@@ -117,11 +117,12 @@ export function CastingModal({ open, onClose, casting, onSave }: CastingModalPro
         api.get('/settings/sources'),
         api.get('/settings/custom-fields'),
       ])
-      setClients(clientsData)
-      setTeamMembers(teamData)
-      setPipeline(pipelineData)
-      setSources(sourcesData)
-      setCustomFields(customFieldsData)
+      // Defensive: ensure all responses are arrays
+      setClients(Array.isArray(clientsData) ? clientsData : [])
+      setTeamMembers(Array.isArray(teamData) ? teamData : [])
+      setPipeline(Array.isArray(pipelineData) ? pipelineData : [])
+      setSources(Array.isArray(sourcesData) ? sourcesData : [])
+      setCustomFields(Array.isArray(customFieldsData) ? customFieldsData : [])
     } catch (err) {
       console.error('Failed to fetch data:', err)
     } finally {
